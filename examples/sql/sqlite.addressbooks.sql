@@ -1,13 +1,23 @@
 CREATE TABLE addressbooks (
     id integer primary key asc NOT NULL,
-    principaluri text NOT NULL,
-    displayname text,
-    uri text NOT NULL,
-    description text,
-    synctoken integer DEFAULT 1 NOT NULL,
-    UNIQUE(principaluri, uri)
+    synctoken integer DEFAULT 1 NOT NULL
 );
 
+CREATE TABLE addressbookinstances (
+    id integer primary key asc NOT NULL,
+    addressbookid integer NOT NULL,
+    principaluri text,
+    access integer DEFAULT 1 NOT NULL,
+    displayname text,
+    uri text,
+    description text,
+    share_href text,
+    share_displayname text,
+    share_invitestatus integer DEFAULT 2 NOT NULL,
+    UNIQUE(principaluri, uri),
+    UNIQUE(addressbookid, principaluri),
+    UNIQUE(addressbookid, share_href)
+);
 
 CREATE TABLE cards (
     id integer primary key asc NOT NULL,

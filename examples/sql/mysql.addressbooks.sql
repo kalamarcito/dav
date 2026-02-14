@@ -1,11 +1,22 @@
 CREATE TABLE addressbooks (
     id INT(11) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    synctoken INT(11) UNSIGNED NOT NULL DEFAULT '1'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE addressbookinstances (
+    id INT(11) UNSIGNED NOT NULL PRIMARY KEY AUTO_INCREMENT,
+    addressbookid INT(11) UNSIGNED NOT NULL,
     principaluri VARBINARY(255),
+    access TINYINT(1) NOT NULL DEFAULT '1',
     displayname VARCHAR(255),
     uri VARBINARY(200),
     description TEXT,
-    synctoken INT(11) UNSIGNED NOT NULL DEFAULT '1',
-    UNIQUE(principaluri(100), uri(100))
+    share_href VARBINARY(100),
+    share_displayname VARCHAR(255),
+    share_invitestatus TINYINT(1) NOT NULL DEFAULT '2',
+    UNIQUE(principaluri(100), uri(100)),
+    UNIQUE(addressbookid, principaluri(100)),
+    UNIQUE(addressbookid, share_href(100))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE cards (

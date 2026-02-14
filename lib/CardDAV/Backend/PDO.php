@@ -7,6 +7,7 @@ namespace Sabre\CardDAV\Backend;
 use Sabre\CardDAV;
 use Sabre\DAV;
 use Sabre\DAV\PropPatch;
+use Sabre\DAV\Xml\Element\Sharee;
 
 /**
  * PDO CardDAV backend.
@@ -17,7 +18,7 @@ use Sabre\DAV\PropPatch;
  * @author Evert Pot (http://evertpot.com/)
  * @license http://sabre.io/license/ Modified BSD License
  */
-class PDO extends AbstractBackend implements SyncSupport
+class PDO extends AbstractBackend implements SyncSupport, SharingSupport
 {
     /**
      * PDO connection.
@@ -30,6 +31,11 @@ class PDO extends AbstractBackend implements SyncSupport
      * The PDO table name used to store addressbooks.
      */
     public $addressBooksTableName = 'addressbooks';
+
+    /**
+     * The PDO table name used to store addressbook instances.
+     */
+    public $addressBookInstancesTableName = 'addressbookinstances';
 
     /**
      * The PDO table name used to store cards.
@@ -60,21 +66,39 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function getAddressBooksForUser($principalUri)
     {
-        $stmt = $this->pdo->prepare('SELECT id, uri, displayname, principaluri, description, synctoken FROM '.$this->addressBooksTableName.' WHERE principaluri = ?');
+        $fields = 'addressbookid, uri, displayname, principaluri, description, access';
+
+        $stmt = $this->pdo->prepare(<<<SQL
+SELECT {$this->addressBookInstancesTableName}.id as id, $fields, synctoken FROM {$this->addressBookInstancesTableName}
+    LEFT JOIN {$this->addressBooksTableName} ON
+        {$this->addressBookInstancesTableName}.addressbookid = {$this->addressBooksTableName}.id
+WHERE principaluri = ? ORDER BY uri ASC
+SQL
+        );
         $stmt->execute([$principalUri]);
 
         $addressBooks = [];
-
-        foreach ($stmt->fetchAll() as $row) {
-            $addressBooks[] = [
-                'id' => $row['id'],
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $addressBook = [
+                'id' => [(int) $row['addressbookid'], (int) $row['id']],
                 'uri' => $row['uri'],
                 'principaluri' => $row['principaluri'],
                 '{DAV:}displayname' => $row['displayname'],
                 '{'.CardDAV\Plugin::NS_CARDDAV.'}addressbook-description' => $row['description'],
                 '{http://calendarserver.org/ns/}getctag' => $row['synctoken'],
                 '{http://sabredav.org/ns}sync-token' => $row['synctoken'] ?: '0',
+                'share-resource-uri' => '/ns/share/'.$row['addressbookid'],
             ];
+
+            $addressBook['share-access'] = (int) $row['access'];
+            // 1 = owner, 2 = readonly, 3 = readwrite
+            if ($row['access'] > 1) {
+                // read-only is for backwards compatibility. Might go away in
+                // the future.
+                $addressBook['read-only'] = \Sabre\DAV\Sharing\Plugin::ACCESS_READ === (int) $row['access'];
+            }
+
+            $addressBooks[] = $addressBook;
         }
 
         return $addressBooks;
@@ -92,16 +116,21 @@ class PDO extends AbstractBackend implements SyncSupport
      *
      * Read the PropPatch documentation for more info and examples.
      *
-     * @param string $addressBookId
+     * @param mixed $addressBookId
      */
     public function updateAddressBook($addressBookId, PropPatch $propPatch)
     {
+        if (!is_array($addressBookId)) {
+            throw new \InvalidArgumentException('The value passed to $addressBookId is expected to be an array with an addressBookId and an instanceId');
+        }
+        list($addressBookId, $instanceId) = $addressBookId;
+
         $supportedProperties = [
             '{DAV:}displayname',
             '{'.CardDAV\Plugin::NS_CARDDAV.'}addressbook-description',
         ];
 
-        $propPatch->handle($supportedProperties, function ($mutations) use ($addressBookId) {
+        $propPatch->handle($supportedProperties, function ($mutations) use ($instanceId) {
             $updates = [];
             foreach ($mutations as $property => $newValue) {
                 switch ($property) {
@@ -113,7 +142,7 @@ class PDO extends AbstractBackend implements SyncSupport
                         break;
                 }
             }
-            $query = 'UPDATE '.$this->addressBooksTableName.' SET ';
+            $query = 'UPDATE '.$this->addressBookInstancesTableName.' SET ';
             $first = true;
             foreach ($updates as $key => $value) {
                 if ($first) {
@@ -123,14 +152,12 @@ class PDO extends AbstractBackend implements SyncSupport
                 }
                 $query .= ' '.$key.' = :'.$key.' ';
             }
-            $query .= ' WHERE id = :addressbookid';
+            $query .= ' WHERE id = :instanceid';
 
             $stmt = $this->pdo->prepare($query);
-            $updates['addressbookid'] = $addressBookId;
+            $updates['instanceid'] = $instanceId;
 
             $stmt->execute($updates);
-
-            $this->addChange($addressBookId, '', 2);
 
             return true;
         });
@@ -142,54 +169,83 @@ class PDO extends AbstractBackend implements SyncSupport
      * @param string $principalUri
      * @param string $url          just the 'basename' of the url
      *
-     * @return int Last insert id
+     * @return array [addressBookId, instanceId]
      */
     public function createAddressBook($principalUri, $url, array $properties)
     {
-        $values = [
-            'displayname' => null,
-            'description' => null,
-            'principaluri' => $principalUri,
-            'uri' => $url,
+        $fieldNames = [
+            'principaluri',
+            'uri',
+            'addressbookid',
         ];
+        $values = [
+            ':principaluri' => $principalUri,
+            ':uri' => $url,
+        ];
+
+        $stmt = $this->pdo->prepare('INSERT INTO '.$this->addressBooksTableName.' (synctoken) VALUES (1)');
+        $stmt->execute();
+
+        $addressBookId = $this->pdo->lastInsertId(
+            $this->addressBooksTableName.'_id_seq'
+        );
+
+        $values[':addressbookid'] = $addressBookId;
 
         foreach ($properties as $property => $newValue) {
             switch ($property) {
                 case '{DAV:}displayname':
-                    $values['displayname'] = $newValue;
+                    $values[':displayname'] = $newValue;
+                    $fieldNames[] = 'displayname';
                     break;
                 case '{'.CardDAV\Plugin::NS_CARDDAV.'}addressbook-description':
-                    $values['description'] = $newValue;
+                    $values[':description'] = $newValue;
+                    $fieldNames[] = 'description';
                     break;
                 default:
                     throw new DAV\Exception\BadRequest('Unknown property: '.$property);
             }
         }
 
-        $query = 'INSERT INTO '.$this->addressBooksTableName.' (uri, displayname, description, principaluri, synctoken) VALUES (:uri, :displayname, :description, :principaluri, 1)';
-        $stmt = $this->pdo->prepare($query);
+        $stmt = $this->pdo->prepare('INSERT INTO '.$this->addressBookInstancesTableName.' ('.implode(', ', $fieldNames).') VALUES ('.implode(', ', array_keys($values)).')');
         $stmt->execute($values);
 
-        return $this->pdo->lastInsertId(
-            $this->addressBooksTableName.'_id_seq'
-        );
+        return [
+            $addressBookId,
+            $this->pdo->lastInsertId($this->addressBookInstancesTableName.'_id_seq'),
+        ];
     }
 
     /**
      * Deletes an entire addressbook and all its contents.
      *
-     * @param int $addressBookId
+     * @param mixed $addressBookId
      */
     public function deleteAddressBook($addressBookId)
     {
+        if (!is_array($addressBookId)) {
+            throw new \InvalidArgumentException('The value passed to $addressBookId is expected to be an array with an addressBookId and an instanceId');
+        }
+        list($addressBookId, $instanceId) = $addressBookId;
+
         $stmt = $this->pdo->prepare('DELETE FROM '.$this->cardsTableName.' WHERE addressbookid = ?');
         $stmt->execute([$addressBookId]);
 
-        $stmt = $this->pdo->prepare('DELETE FROM '.$this->addressBooksTableName.' WHERE id = ?');
-        $stmt->execute([$addressBookId]);
+        $stmt = $this->pdo->prepare('DELETE FROM '.$this->addressBookInstancesTableName.' WHERE id = ?');
+        $stmt->execute([$instanceId]);
 
         $stmt = $this->pdo->prepare('DELETE FROM '.$this->addressBookChangesTableName.' WHERE addressbookid = ?');
         $stmt->execute([$addressBookId]);
+
+        // Only delete from addressbooks table if this was the last instance
+        $stmt = $this->pdo->prepare('SELECT COUNT(*) FROM '.$this->addressBookInstancesTableName.' WHERE addressbookid = ?');
+        $stmt->execute([$addressBookId]);
+        $instanceCount = $stmt->fetchColumn();
+
+        if (0 == $instanceCount) {
+            $stmt = $this->pdo->prepare('DELETE FROM '.$this->addressBooksTableName.' WHERE id = ?');
+            $stmt->execute([$addressBookId]);
+        }
     }
 
     /**
@@ -214,6 +270,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function getCards($addressbookId)
     {
+        if (is_array($addressbookId)) {
+            $addressbookId = $addressbookId[0];
+        }
+
         $stmt = $this->pdo->prepare('SELECT id, uri, lastmodified, etag, size FROM '.$this->cardsTableName.' WHERE addressbookid = ?');
         $stmt->execute([$addressbookId]);
 
@@ -242,6 +302,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function getCard($addressBookId, $cardUri)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         $stmt = $this->pdo->prepare('SELECT id, carddata, uri, lastmodified, etag, size FROM '.$this->cardsTableName.' WHERE addressbookid = ? AND uri = ? LIMIT 1');
         $stmt->execute([$addressBookId, $cardUri]);
 
@@ -271,6 +335,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function getMultipleCards($addressBookId, array $uris)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         $query = 'SELECT id, uri, lastmodified, etag, size, carddata FROM '.$this->cardsTableName.' WHERE addressbookid = ? AND uri IN (';
         // Inserting a whole bunch of question marks
         $query .= implode(',', array_fill(0, count($uris), '?'));
@@ -316,6 +384,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function createCard($addressBookId, $cardUri, $cardData)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         $stmt = $this->pdo->prepare('INSERT INTO '.$this->cardsTableName.' (carddata, uri, lastmodified, addressbookid, size, etag) VALUES (?, ?, ?, ?, ?, ?)');
 
         $etag = md5($cardData);
@@ -362,6 +434,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function updateCard($addressBookId, $cardUri, $cardData)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         $stmt = $this->pdo->prepare('UPDATE '.$this->cardsTableName.' SET carddata = ?, lastmodified = ?, size = ?, etag = ? WHERE uri = ? AND addressbookid =?');
 
         $etag = md5($cardData);
@@ -389,6 +465,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function deleteCard($addressBookId, $cardUri)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         $stmt = $this->pdo->prepare('DELETE FROM '.$this->cardsTableName.' WHERE addressbookid = ? AND uri = ?');
         $stmt->execute([$addressBookId, $cardUri]);
 
@@ -447,7 +527,7 @@ class PDO extends AbstractBackend implements SyncSupport
      *
      * The limit is 'suggestive'. You are free to ignore it.
      *
-     * @param string $addressBookId
+     * @param mixed  $addressBookId
      * @param string $syncToken
      * @param int    $syncLevel
      * @param int    $limit
@@ -456,6 +536,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     public function getChangesForAddressBook($addressBookId, $syncToken, $syncLevel, $limit = null)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         // Current synctoken
         $stmt = $this->pdo->prepare('SELECT synctoken FROM '.$this->addressBooksTableName.' WHERE id = ?');
         $stmt->execute([$addressBookId]);
@@ -516,6 +600,152 @@ class PDO extends AbstractBackend implements SyncSupport
     }
 
     /**
+     * Updates the list of shares.
+     *
+     * @param mixed                           $addressBookId
+     * @param \Sabre\DAV\Xml\Element\Sharee[] $sharees
+     */
+    public function updateInvites($addressBookId, array $sharees)
+    {
+        if (!is_array($addressBookId)) {
+            throw new \InvalidArgumentException('The value passed to $addressBookId is expected to be an array with an addressBookId and an instanceId');
+        }
+        $currentInvites = $this->getInvites($addressBookId);
+        list($addressBookId, $instanceId) = $addressBookId;
+
+        $removeStmt = $this->pdo->prepare('DELETE FROM '.$this->addressBookInstancesTableName.' WHERE addressbookid = ? AND share_href = ? AND access IN (2,3)');
+        $updateStmt = $this->pdo->prepare('UPDATE '.$this->addressBookInstancesTableName.' SET access = ?, share_displayname = ?, share_invitestatus = ? WHERE addressbookid = ? AND share_href = ?');
+
+        $insertStmt = $this->pdo->prepare('
+INSERT INTO '.$this->addressBookInstancesTableName.'
+    (
+        addressbookid,
+        principaluri,
+        access,
+        displayname,
+        uri,
+        description,
+        share_href,
+        share_displayname,
+        share_invitestatus
+    )
+    SELECT
+        ?,
+        ?,
+        ?,
+        displayname,
+        ?,
+        description,
+        ?,
+        ?,
+        ?
+    FROM '.$this->addressBookInstancesTableName.' WHERE id = ?');
+
+        foreach ($sharees as $sharee) {
+            if (\Sabre\DAV\Sharing\Plugin::ACCESS_NOACCESS === $sharee->access) {
+                // if access was set no NOACCESS, it means access for an
+                // existing sharee was removed.
+                $removeStmt->execute([$addressBookId, $sharee->href]);
+                continue;
+            }
+
+            if (is_null($sharee->principal)) {
+                // If the server could not determine the principal automatically,
+                // we will mark the invite status as invalid.
+                $sharee->inviteStatus = \Sabre\DAV\Sharing\Plugin::INVITE_INVALID;
+            } else {
+                // Because sabre/dav does not yet have an invitation system,
+                // every invite is automatically accepted for now.
+                $sharee->inviteStatus = \Sabre\DAV\Sharing\Plugin::INVITE_ACCEPTED;
+            }
+
+            foreach ($currentInvites as $oldSharee) {
+                if ($oldSharee->href === $sharee->href) {
+                    // This is an update
+                    $sharee->properties = array_merge(
+                        $oldSharee->properties,
+                        $sharee->properties
+                    );
+                    $updateStmt->execute([
+                        $sharee->access,
+                        isset($sharee->properties['{DAV:}displayname']) ? $sharee->properties['{DAV:}displayname'] : null,
+                        $sharee->inviteStatus ?: $oldSharee->inviteStatus,
+                        $addressBookId,
+                        $sharee->href,
+                    ]);
+                    continue 2;
+                }
+            }
+            // If we got here, it means it was a new sharee
+            $insertStmt->execute([
+                $addressBookId,
+                $sharee->principal,
+                $sharee->access,
+                \Sabre\DAV\UUIDUtil::getUUID(),
+                $sharee->href,
+                isset($sharee->properties['{DAV:}displayname']) ? $sharee->properties['{DAV:}displayname'] : null,
+                $sharee->inviteStatus ?: \Sabre\DAV\Sharing\Plugin::INVITE_NORESPONSE,
+                $instanceId,
+            ]);
+        }
+    }
+
+    /**
+     * Returns the list of people whom this address book is shared with.
+     *
+     * Every item in the returned list must be a Sharee object with at
+     * least the following properties set:
+     *   $href
+     *   $shareAccess
+     *   $inviteStatus
+     *
+     * and optionally:
+     *   $properties
+     *
+     * @param mixed $addressBookId
+     *
+     * @return \Sabre\DAV\Xml\Element\Sharee[]
+     */
+    public function getInvites($addressBookId)
+    {
+        if (!is_array($addressBookId)) {
+            throw new \InvalidArgumentException('The value passed to getInvites() is expected to be an array with an addressBookId and an instanceId');
+        }
+        list($addressBookId, $instanceId) = $addressBookId;
+
+        $query = <<<SQL
+SELECT
+    principaluri,
+    access,
+    share_href,
+    share_displayname,
+    share_invitestatus
+FROM {$this->addressBookInstancesTableName}
+WHERE
+    addressbookid = ?
+SQL;
+
+        $stmt = $this->pdo->prepare($query);
+        $stmt->execute([$addressBookId]);
+
+        $result = [];
+        while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $result[] = new Sharee([
+                'href' => isset($row['share_href']) ? $row['share_href'] : \Sabre\HTTP\encodePath($row['principaluri']),
+                'access' => (int) $row['access'],
+                /// Everyone is always immediately accepted, for now.
+                'inviteStatus' => (int) $row['share_invitestatus'],
+                'properties' => !empty($row['share_displayname'])
+                    ? ['{DAV:}displayname' => $row['share_displayname']]
+                    : [],
+                'principal' => $row['principaluri'],
+            ]);
+        }
+
+        return $result;
+    }
+
+    /**
      * Adds a change record to the addressbookchanges table.
      *
      * @param mixed  $addressBookId
@@ -524,6 +754,10 @@ class PDO extends AbstractBackend implements SyncSupport
      */
     protected function addChange($addressBookId, $objectUri, $operation)
     {
+        if (is_array($addressBookId)) {
+            $addressBookId = $addressBookId[0];
+        }
+
         $stmt = $this->pdo->prepare('INSERT INTO '.$this->addressBookChangesTableName.' (uri, synctoken, addressbookid, operation) SELECT ?, synctoken, ?, ? FROM '.$this->addressBooksTableName.' WHERE id = ?');
         $stmt->execute([
             $objectUri,

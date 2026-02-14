@@ -119,7 +119,7 @@ class AddressBookHome extends DAV\Collection implements DAV\IExtendedCollection,
      *
      * @todo needs optimizing
      *
-     * @return AddressBook
+     * @return AddressBook|SharedAddressBook
      */
     public function getChild($name)
     {
@@ -141,7 +141,11 @@ class AddressBookHome extends DAV\Collection implements DAV\IExtendedCollection,
         $addressbooks = $this->carddavBackend->getAddressBooksForUser($this->principalUri);
         $objs = [];
         foreach ($addressbooks as $addressbook) {
-            $objs[] = new AddressBook($this->carddavBackend, $addressbook);
+            if ($this->carddavBackend instanceof Backend\SharingSupport) {
+                $objs[] = new SharedAddressBook($this->carddavBackend, $addressbook);
+            } else {
+                $objs[] = new AddressBook($this->carddavBackend, $addressbook);
+            }
         }
 
         return $objs;
