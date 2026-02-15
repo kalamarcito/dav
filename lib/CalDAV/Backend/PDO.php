@@ -159,6 +159,7 @@ class PDO extends AbstractBackend implements SyncSupport, SubscriptionSupport, S
         $fields[] = 'principaluri';
         $fields[] = 'transparent';
         $fields[] = 'access';
+        $fields[] = 'permissions';
 
         // Making fields a comma-delimited list
         $fields = implode(', ', $fields);
@@ -190,6 +191,7 @@ SQL
             ];
 
             $calendar['share-access'] = (int) $row['access'];
+            $calendar['permissions'] = (int) ($row['permissions'] ?? 0);
             // 1 = owner, 2 = readonly, 3 = readwrite
             if ($row['access'] > 1) {
                 // We need to find more information about the original owner.

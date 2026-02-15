@@ -89,38 +89,80 @@ class SharedAddressBook extends AddressBook implements ISharedAddressBook
      *
      * @return array
      */
+    /**
+     * Granular permission bits (stored in 'permissions' field).
+     * Read is always implicit for shared resources.
+     */
+    public const PERM_WRITE = 1;
+    public const PERM_CREATE = 2;
+    public const PERM_DELETE = 4;
+
     public function getACL()
     {
         $acl = [];
+        $principal = $this->addressBookInfo['principaluri'];
+        $access = $this->getShareAccess();
 
-        switch ($this->getShareAccess()) {
+        switch ($access) {
             case SPlugin::ACCESS_NOTSHARED:
             case SPlugin::ACCESS_SHAREDOWNER:
                 $acl[] = [
                     'privilege' => '{DAV:}share',
-                    'principal' => $this->addressBookInfo['principaluri'],
+                    'principal' => $principal,
                     'protected' => true,
                 ];
-                // no break intentional!
-            case SPlugin::ACCESS_READWRITE:
                 $acl[] = [
                     'privilege' => '{DAV:}write',
-                    'principal' => $this->addressBookInfo['principaluri'],
-                    'protected' => true,
-                ];
-                // no break intentional!
-            case SPlugin::ACCESS_READ:
-                $acl[] = [
-                    'privilege' => '{DAV:}write-properties',
-                    'principal' => $this->addressBookInfo['principaluri'],
-                    'protected' => true,
-                ];
-                $acl[] = [
-                    'privilege' => '{DAV:}read',
-                    'principal' => $this->addressBookInfo['principaluri'],
+                    'principal' => $principal,
                     'protected' => true,
                 ];
                 break;
+
+            case SPlugin::ACCESS_READWRITE:
+            case SPlugin::ACCESS_READ:
+                $permissions = $this->addressBookInfo['permissions'] ?? 0;
+
+                // For legacy ACCESS_READWRITE without explicit permissions, grant all
+                if (SPlugin::ACCESS_READWRITE === $access && 0 === $permissions) {
+                    $permissions = self::PERM_WRITE | self::PERM_CREATE | self::PERM_DELETE;
+                }
+
+                if ($permissions & self::PERM_WRITE) {
+                    $acl[] = [
+                        'privilege' => '{DAV:}write-content',
+                        'principal' => $principal,
+                        'protected' => true,
+                    ];
+                }
+                if ($permissions & self::PERM_CREATE) {
+                    $acl[] = [
+                        'privilege' => '{DAV:}bind',
+                        'principal' => $principal,
+                        'protected' => true,
+                    ];
+                }
+                if ($permissions & self::PERM_DELETE) {
+                    $acl[] = [
+                        'privilege' => '{DAV:}unbind',
+                        'principal' => $principal,
+                        'protected' => true,
+                    ];
+                }
+                break;
+        }
+
+        // Read + write-properties always granted for shared resources
+        if (SPlugin::ACCESS_NOACCESS !== $access) {
+            $acl[] = [
+                'privilege' => '{DAV:}write-properties',
+                'principal' => $principal,
+                'protected' => true,
+            ];
+            $acl[] = [
+                'privilege' => '{DAV:}read',
+                'principal' => $principal,
+                'protected' => true,
+            ];
         }
 
         return $acl;
@@ -136,25 +178,44 @@ class SharedAddressBook extends AddressBook implements ISharedAddressBook
     public function getChildACL()
     {
         $acl = [];
+        $principal = $this->addressBookInfo['principaluri'];
+        $access = $this->getShareAccess();
 
-        switch ($this->getShareAccess()) {
+        switch ($access) {
             case SPlugin::ACCESS_NOTSHARED:
             case SPlugin::ACCESS_SHAREDOWNER:
-            case SPlugin::ACCESS_READWRITE:
                 $acl[] = [
                     'privilege' => '{DAV:}write',
-                    'principal' => $this->addressBookInfo['principaluri'],
-                    'protected' => true,
-                ];
-                // no break intentional
-            case SPlugin::ACCESS_READ:
-                $acl[] = [
-                    'privilege' => '{DAV:}read',
-                    'principal' => $this->addressBookInfo['principaluri'],
+                    'principal' => $principal,
                     'protected' => true,
                 ];
                 break;
+
+            case SPlugin::ACCESS_READWRITE:
+            case SPlugin::ACCESS_READ:
+                $permissions = $this->addressBookInfo['permissions'] ?? 0;
+
+                if (SPlugin::ACCESS_READWRITE === $access && 0 === $permissions) {
+                    $permissions = self::PERM_WRITE | self::PERM_CREATE | self::PERM_DELETE;
+                }
+
+                if ($permissions & self::PERM_WRITE) {
+                    $acl[] = [
+                        'privilege' => '{DAV:}write-content',
+                        'principal' => $principal,
+                        'protected' => true,
+                    ];
+                }
+                // Note: bind/unbind are collection-level, not child-level
+                break;
         }
+
+        // Read always granted
+        $acl[] = [
+            'privilege' => '{DAV:}read',
+            'principal' => $principal,
+            'protected' => true,
+        ];
 
         return $acl;
     }

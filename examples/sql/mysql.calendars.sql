@@ -25,6 +25,7 @@ CREATE TABLE calendarinstances (
     calendarid INTEGER UNSIGNED NOT NULL,
     principaluri VARBINARY(100),
     access TINYINT(1) NOT NULL DEFAULT '1' COMMENT '1 = owner, 2 = read, 3 = readwrite',
+    permissions TINYINT(1) NOT NULL DEFAULT '0' COMMENT 'bitmask: 1=write, 2=create, 4=delete',
     displayname VARCHAR(100),
     uri VARBINARY(200),
     description TEXT,

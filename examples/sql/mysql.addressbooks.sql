@@ -8,6 +8,7 @@ CREATE TABLE addressbookinstances (
     addressbookid INT(11) UNSIGNED NOT NULL,
     principaluri VARBINARY(255),
     access TINYINT(1) NOT NULL DEFAULT '1',
+    permissions TINYINT(1) NOT NULL DEFAULT '0',
     displayname VARCHAR(255),
     uri VARBINARY(200),
     description TEXT,

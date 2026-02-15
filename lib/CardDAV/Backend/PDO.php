@@ -66,7 +66,7 @@ class PDO extends AbstractBackend implements SyncSupport, SharingSupport
      */
     public function getAddressBooksForUser($principalUri)
     {
-        $fields = 'addressbookid, uri, displayname, principaluri, description, access';
+        $fields = 'addressbookid, uri, displayname, principaluri, description, access, permissions';
 
         $stmt = $this->pdo->prepare(<<<SQL
 SELECT {$this->addressBookInstancesTableName}.id as id, $fields, synctoken FROM {$this->addressBookInstancesTableName}
@@ -91,6 +91,7 @@ SQL
             ];
 
             $addressBook['share-access'] = (int) $row['access'];
+            $addressBook['permissions'] = (int) ($row['permissions'] ?? 0);
             // 1 = owner, 2 = readonly, 3 = readwrite
             if ($row['access'] > 1) {
                 // read-only is for backwards compatibility. Might go away in
