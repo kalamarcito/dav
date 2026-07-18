@@ -163,24 +163,41 @@ class PDO extends AbstractBackend implements SyncSupport, SubscriptionSupport, S
 
         // Making fields a comma-delimited list
         $fields = implode(', ', $fields);
+        // Also return calendars shared with any group this principal is a
+        // member of (groupmembers). Flat group principal URIs only
+        // (e.g. principals/group-team), not nested paths.
         $stmt = $this->pdo->prepare(<<<SQL
 SELECT {$this->calendarInstancesTableName}.id as id, $fields FROM {$this->calendarInstancesTableName}
     LEFT JOIN {$this->calendarTableName} ON
         {$this->calendarInstancesTableName}.calendarid = {$this->calendarTableName}.id
-WHERE principaluri = ? ORDER BY calendarorder ASC
+WHERE principaluri = ?
+   OR principaluri IN (
+        SELECT g.uri
+        FROM groupmembers gm
+        INNER JOIN principals g ON g.id = gm.principal_id
+        INNER JOIN principals m ON m.id = gm.member_id
+        WHERE m.uri = ?
+   )
+ORDER BY calendarorder ASC
 SQL
         );
-        $stmt->execute([$principalUri]);
+        $stmt->execute([$principalUri, $principalUri]);
 
-        $calendars = [];
+        // Keyed by calendarid so a direct share wins over a group share.
+        $calendarsById = [];
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $calendarId = (int) $row['calendarid'];
+            if (isset($calendarsById[$calendarId]) && $row['principaluri'] !== $principalUri) {
+                continue;
+            }
+
             $components = [];
             if ($row['components']) {
                 $components = explode(',', $row['components']);
             }
 
             $calendar = [
-                'id' => [(int) $row['calendarid'], (int) $row['id']],
+                'id' => [$calendarId, (int) $row['id']],
                 'uri' => $row['uri'],
                 'principaluri' => $row['principaluri'],
                 '{'.CalDAV\Plugin::NS_CALENDARSERVER.'}getctag' => 'http://sabre.io/ns/sync/'.($row['synctoken'] ?: '0'),
@@ -207,10 +224,10 @@ SQL
                 $calendar[$xmlName] = $row[$dbName];
             }
 
-            $calendars[] = $calendar;
+            $calendarsById[$calendarId] = $calendar;
         }
 
-        return $calendars;
+        return array_values($calendarsById);
     }
 
     /**

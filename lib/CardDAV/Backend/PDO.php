@@ -68,19 +68,35 @@ class PDO extends AbstractBackend implements SyncSupport, SharingSupport
     {
         $fields = 'addressbookid, uri, displayname, principaluri, description, access, permissions';
 
+        // Also return address books shared with any group this principal is a
+        // member of (groupmembers). Flat group principal URIs only.
         $stmt = $this->pdo->prepare(<<<SQL
 SELECT {$this->addressBookInstancesTableName}.id as id, $fields, synctoken FROM {$this->addressBookInstancesTableName}
     LEFT JOIN {$this->addressBooksTableName} ON
         {$this->addressBookInstancesTableName}.addressbookid = {$this->addressBooksTableName}.id
-WHERE principaluri = ? ORDER BY uri ASC
+WHERE principaluri = ?
+   OR principaluri IN (
+        SELECT g.uri
+        FROM groupmembers gm
+        INNER JOIN principals g ON g.id = gm.principal_id
+        INNER JOIN principals m ON m.id = gm.member_id
+        WHERE m.uri = ?
+   )
+ORDER BY uri ASC
 SQL
         );
-        $stmt->execute([$principalUri]);
+        $stmt->execute([$principalUri, $principalUri]);
 
-        $addressBooks = [];
+        // Keyed by addressbookid so a direct share wins over a group share.
+        $addressBooksById = [];
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+            $addressBookId = (int) $row['addressbookid'];
+            if (isset($addressBooksById[$addressBookId]) && $row['principaluri'] !== $principalUri) {
+                continue;
+            }
+
             $addressBook = [
-                'id' => [(int) $row['addressbookid'], (int) $row['id']],
+                'id' => [$addressBookId, (int) $row['id']],
                 'uri' => $row['uri'],
                 'principaluri' => $row['principaluri'],
                 '{DAV:}displayname' => $row['displayname'],
@@ -99,10 +115,10 @@ SQL
                 $addressBook['read-only'] = \Sabre\DAV\Sharing\Plugin::ACCESS_READ === (int) $row['access'];
             }
 
-            $addressBooks[] = $addressBook;
+            $addressBooksById[$addressBookId] = $addressBook;
         }
 
-        return $addressBooks;
+        return array_values($addressBooksById);
     }
 
     /**
