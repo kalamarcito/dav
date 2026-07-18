@@ -35,7 +35,7 @@ class SharingPlugin extends DAV\ServerPlugin
      *
      * @return array
      */
-    public function getFeatures()
+    public function getFeatures(): array
     {
         return ['carddav-sharing'];
     }
@@ -48,7 +48,7 @@ class SharingPlugin extends DAV\ServerPlugin
      *
      * @return string
      */
-    public function getPluginName()
+    public function getPluginName(): string
     {
         return 'carddav-sharing';
     }
@@ -61,7 +61,7 @@ class SharingPlugin extends DAV\ServerPlugin
      *
      * This method should set up the required event subscriptions.
      */
-    public function initialize(DAV\Server $server)
+    public function initialize(DAV\Server $server): void
     {
         $this->server = $server;
 
@@ -91,7 +91,7 @@ class SharingPlugin extends DAV\ServerPlugin
      * DAV\Sharing\Plugin for all ISharedNode instances, so we don't need
      * to duplicate it here.
      */
-    public function propFindEarly(DAV\PropFind $propFind, DAV\INode $node)
+    public function propFindEarly(DAV\PropFind $propFind, DAV\INode $node): void
     {
         // Currently a no-op for CardDAV. The DAV Sharing Plugin handles
         // {DAV:}invite and {DAV:}share-access for all ISharedNode instances.
@@ -104,7 +104,7 @@ class SharingPlugin extends DAV\ServerPlugin
      * This allows us to inject the correct resourcetype for address books that
      * have been shared.
      */
-    public function propFindLate(DAV\PropFind $propFind, DAV\INode $node)
+    public function propFindLate(DAV\PropFind $propFind, DAV\INode $node): void
     {
         if ($node instanceof ISharedAddressBook) {
             $shareAccess = $node->getShareAccess();
@@ -138,7 +138,7 @@ class SharingPlugin extends DAV\ServerPlugin
      *
      * @param string $path
      */
-    public function propPatch($path, DAV\PropPatch $propPatch)
+    public function propPatch(string $path, DAV\PropPatch $propPatch): void
     {
         $node = $this->server->tree->getNodeForPath($path);
         if (!$node instanceof ISharedAddressBook) {
@@ -226,7 +226,7 @@ class SharingPlugin extends DAV\ServerPlugin
      *
      * @return array
      */
-    public function getPluginInfo()
+    public function getPluginInfo(): array
     {
         return [
             'name' => $this->getPluginName(),
