@@ -67,6 +67,12 @@ class AddressBook extends DAV\Collection implements IAddressBook, DAV\IPropertie
             throw new DAV\Exception\NotFound('Card not found');
         }
 
+        // Apply the share-aware child ACL, exactly like getChildren() and
+        // CalDAV's Calendar::getChild(). Without this a single card fetched by
+        // name (PUT/DELETE/GET) falls back to Card::getACL()'s default
+        // {DAV:}all, letting readonly sharees modify cards.
+        $obj['acl'] = $this->getChildACL();
+
         return new Card($this->carddavBackend, $this->addressBookInfo, $obj);
     }
 
