@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sabre\DAV;
 
-use DateTime;
 use Sabre\HTTP;
 
 /**
@@ -29,14 +28,14 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
         $this->server->createFile('files/test.txt', 'Test contents');
 
         $this->lastModified = HTTP\toDate(
-            new DateTime('@'.$this->server->tree->getNodeForPath('files/test.txt')->getLastModified())
+            new \DateTime('@'.$this->server->tree->getNodeForPath('files/test.txt')->getLastModified())
         );
 
         $stream = popen('echo "Test contents"', 'r');
         $streamingFile = new Mock\StreamingFile(
-                'no-seeking.txt',
-                $stream
-            );
+            'no-seeking.txt',
+            $stream
+        );
         $streamingFile->setSize(12);
         $this->server->tree->getNodeForPath('files')->addNode($streamingFile);
     }
@@ -53,11 +52,33 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Range' => ['bytes 2-5/13'],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
         self::assertEquals(206, $response->getStatus());
         self::assertEquals('st c', $response->getBodyAsString());
+    }
+
+    /**
+     * @depends testRange
+     */
+    public function testHeadRange()
+    {
+        $request = new HTTP\Request('HEAD', '/files/test.txt', ['Range' => 'bytes=2-']);
+        $response = $this->request($request);
+
+        self::assertEquals([
+            'X-Sabre-Version' => [Version::VERSION],
+            'Content-Type' => ['application/octet-stream'],
+            'Content-Length' => [13],
+            'ETag' => ['"'.md5('Test contents').'"'],
+            'Last-Modified' => [$this->lastModified],
+        ],
+            $response->getHeaders()
+        );
+
+        self::assertEquals('', $response->getBodyAsString());
+        self::assertEquals(200, $response->getStatus());
     }
 
     /**
@@ -75,7 +96,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Range' => ['bytes 2-12/13'],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 
@@ -98,7 +119,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Range' => ['bytes 5-12/13'],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 
@@ -141,7 +162,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Range' => ['bytes 2-5/12'],
             // 'ETag'            => ['"' . md5('Test contents') . '"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 
@@ -166,7 +187,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Range' => ['bytes 2-5/13'],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 
@@ -191,7 +212,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Length' => [13],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 
@@ -217,7 +238,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Range' => ['bytes 2-5/13'],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 
@@ -242,7 +263,7 @@ class ServerRangeTest extends \Sabre\AbstractDAVServerTestCase
             'Content-Length' => [13],
             'ETag' => ['"'.md5('Test contents').'"'],
             'Last-Modified' => [$this->lastModified],
-            ],
+        ],
             $response->getHeaders()
         );
 

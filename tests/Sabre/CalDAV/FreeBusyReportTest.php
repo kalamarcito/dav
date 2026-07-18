@@ -83,7 +83,7 @@ ics;
 
         $request = new HTTP\Request('GET', '/calendar');
         $this->server->httpRequest = $request;
-        $this->server->httpResponse = new HTTP\ResponseMock();
+        $this->server->httpResponse = new HTTP\Response();
 
         $this->plugin = new Plugin();
         $this->server->addPlugin($this->plugin);
@@ -101,16 +101,16 @@ XML;
         $report = $this->server->xml->parse($reportXML, null, $rootElem);
         $this->plugin->report($rootElem, $report, null);
 
-        self::assertEquals(200, $this->server->httpResponse->status);
+        self::assertEquals(200, $this->server->httpResponse->getStatus());
         self::assertEquals('text/calendar', $this->server->httpResponse->getHeader('Content-Type'));
-        self::assertTrue(false !== strpos($this->server->httpResponse->body, 'BEGIN:VFREEBUSY'));
-        self::assertTrue(false !== strpos($this->server->httpResponse->body, '20111005T120000Z/20111005T130000Z'));
-        self::assertTrue(false !== strpos($this->server->httpResponse->body, '20111006T100000Z/20111006T110000Z'));
+        self::assertTrue(false !== strpos($this->server->httpResponse->getBody(), 'BEGIN:VFREEBUSY'));
+        self::assertTrue(false !== strpos($this->server->httpResponse->getBody(), '20111005T120000Z/20111005T130000Z'));
+        self::assertTrue(false !== strpos($this->server->httpResponse->getBody(), '20111006T100000Z/20111006T110000Z'));
     }
 
     public function testFreeBusyReportNoTimeRange()
     {
-        $this->expectException(\Sabre\DAV\Exception\BadRequest::class);
+        $this->expectException(DAV\Exception\BadRequest::class);
         $reportXML = <<<XML
 <?xml version="1.0"?>
 <c:free-busy-query xmlns:c="urn:ietf:params:xml:ns:caldav">
@@ -122,7 +122,7 @@ XML;
 
     public function testFreeBusyReportWrongNode()
     {
-        $this->expectException(\Sabre\DAV\Exception\NotImplemented::class);
+        $this->expectException(DAV\Exception\NotImplemented::class);
         $request = new HTTP\Request('REPORT', '/');
         $this->server->httpRequest = $request;
 
@@ -139,7 +139,7 @@ XML;
 
     public function testFreeBusyReportNoACLPlugin()
     {
-        $this->expectException(\Sabre\DAV\Exception::class);
+        $this->expectException(DAV\Exception::class);
         $this->server = new DAV\Server();
         $this->server->httpRequest = new HTTP\Request('REPORT', '/');
         $this->plugin = new Plugin();

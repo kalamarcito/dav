@@ -15,7 +15,7 @@ use Sabre\Xml\XmlDeserializable;
  * This class parses the {urn:ietf:params:xml:ns:caldav}calendar-query
  * REPORT, as defined in:
  *
- * https://tools.ietf.org/html/rfc4791#section-7.9
+ * https://tools.ietf.org/html/rfc4791#section-7.8
  *
  * @copyright Copyright (C) fruux GmbH (https://fruux.com/)
  * @author Evert Pot (http://www.rooftopsolutions.nl/)
@@ -45,7 +45,7 @@ class CalendarQueryReport implements XmlDeserializable
      *
      * @var array|null
      */
-    public $expand = null;
+    public $expand;
 
     /**
      * The mimetype of the content that should be returned. Usually
@@ -53,7 +53,7 @@ class CalendarQueryReport implements XmlDeserializable
      *
      * @var string
      */
-    public $contentType = null;
+    public $contentType;
 
     /**
      * The version of calendar-data that should be returned. Usually '2.0',
@@ -61,7 +61,7 @@ class CalendarQueryReport implements XmlDeserializable
      *
      * @var string
      */
-    public $version = null;
+    public $version;
 
     /**
      * The deserialize method is called during xml parsing.
@@ -80,8 +80,6 @@ class CalendarQueryReport implements XmlDeserializable
      *
      * $reader->parseInnerTree() will parse the entire sub-tree, and advance to
      * the next element.
-     *
-     * @return mixed
      */
     public static function xmlDeserialize(Reader $reader)
     {

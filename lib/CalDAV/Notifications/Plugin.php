@@ -31,7 +31,7 @@ class Plugin extends ServerPlugin
     /**
      * This is the namespace for the proprietary calendarserver extensions.
      */
-    const NS_CALENDARSERVER = 'http://calendarserver.org/ns/';
+    public const NS_CALENDARSERVER = 'http://calendarserver.org/ns/';
 
     /**
      * Reference to the main server object.
@@ -45,10 +45,8 @@ class Plugin extends ServerPlugin
      *
      * Using this name other plugins will be able to access other plugins
      * using \Sabre\DAV\Server::getPlugin
-     *
-     * @return string
      */
-    public function getPluginName()
+    public function getPluginName(): string
     {
         return 'notifications';
     }
@@ -68,7 +66,7 @@ class Plugin extends ServerPlugin
         $server->on('propFind', [$this, 'propFind']);
 
         $server->xml->namespaceMap[self::NS_CALENDARSERVER] = 'cs';
-        $server->resourceTypeMapping[\Sabre\CalDAV\Notifications\ICollection::class] = '{'.self::NS_CALENDARSERVER.'}notification';
+        $server->resourceTypeMapping[ICollection::class] = '{'.self::NS_CALENDARSERVER.'}notification';
 
         array_push($server->protectedProperties,
             '{'.self::NS_CALENDARSERVER.'}notification-URL',
@@ -147,10 +145,8 @@ class Plugin extends ServerPlugin
      *
      * The description key in the returned array may contain html and will not
      * be sanitized.
-     *
-     * @return array
      */
-    public function getPluginInfo()
+    public function getPluginInfo(): array
     {
         return [
             'name' => $this->getPluginName(),

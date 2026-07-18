@@ -92,8 +92,7 @@ class MockSharing extends Mock implements NotificationSupport, SharingSupport
     /**
      * Updates the list of shares.
      *
-     * @param mixed                           $calendarId
-     * @param \Sabre\DAV\Xml\Element\Sharee[] $sharees
+     * @param DAV\Xml\Element\Sharee[] $sharees
      */
     public function updateInvites($calendarId, array $sharees)
     {
@@ -140,9 +139,7 @@ class MockSharing extends Mock implements NotificationSupport, SharingSupport
      * and optionally:
      *   $properties
      *
-     * @param mixed $calendarId
-     *
-     * @return \Sabre\DAV\Xml\Element\Sharee[]
+     * @return DAV\Xml\Element\Sharee[]
      */
     public function getInvites($calendarId)
     {
@@ -156,8 +153,8 @@ class MockSharing extends Mock implements NotificationSupport, SharingSupport
     /**
      * This method is called when a user replied to a request to share.
      *
-     * @param string href The sharee who is replying (often a mailto: address)
-     * @param int status One of the \Sabre\DAV\Sharing\Plugin::INVITE_* constants
+     * @param string $href        The sharee who is replying (often a mailto: address)
+     * @param int    $status      One of the \Sabre\DAV\Sharing\Plugin::INVITE_* constants
      * @param string $calendarUri The url to the calendar thats being shared
      * @param string $inReplyTo   The unique id this message is a response to
      * @param string $summary     A description of the reply
@@ -173,8 +170,7 @@ class MockSharing extends Mock implements NotificationSupport, SharingSupport
     /**
      * Publishes a calendar.
      *
-     * @param mixed $calendarId
-     * @param bool  $value
+     * @param bool $value
      */
     public function setPublishStatus($calendarId, $value)
     {

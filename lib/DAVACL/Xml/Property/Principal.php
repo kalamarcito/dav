@@ -25,22 +25,22 @@ class Principal extends DAV\Xml\Property\Href
     /**
      * To specify a not-logged-in user, use the UNAUTHENTICATED principal.
      */
-    const UNAUTHENTICATED = 1;
+    public const UNAUTHENTICATED = 1;
 
     /**
      * To specify any principal that is logged in, use AUTHENTICATED.
      */
-    const AUTHENTICATED = 2;
+    public const AUTHENTICATED = 2;
 
     /**
      * Specific principals can be specified with the HREF.
      */
-    const HREF = 3;
+    public const HREF = 3;
 
     /**
      * Everybody, basically.
      */
-    const ALL = 4;
+    public const ALL = 4;
 
     /**
      * Principal-type.
@@ -57,11 +57,8 @@ class Principal extends DAV\Xml\Property\Href
      * The 'type' argument must be one of the type constants defined in this class.
      *
      * 'href' is only required for the HREF type.
-     *
-     * @param int         $type
-     * @param string|null $href
      */
-    public function __construct($type, $href = null)
+    public function __construct(int $type, ?string $href = null)
     {
         $this->type = $type;
         if (self::HREF === $type && is_null($href)) {
@@ -75,10 +72,8 @@ class Principal extends DAV\Xml\Property\Href
 
     /**
      * Returns the principal type.
-     *
-     * @return int
      */
-    public function getType()
+    public function getType(): int
     {
         return $this->type;
     }
@@ -127,10 +122,8 @@ class Principal extends DAV\Xml\Property\Href
      *
      * The baseUri parameter is a url to the root of the application, and can
      * be used to construct local links.
-     *
-     * @return string
      */
-    public function toHtml(HtmlOutputHelper $html)
+    public function toHtml(HtmlOutputHelper $html): string
     {
         switch ($this->type) {
             case self::UNAUTHENTICATED:
@@ -163,10 +156,8 @@ class Principal extends DAV\Xml\Property\Href
      *
      * $reader->parseInnerTree() will parse the entire sub-tree, and advance to
      * the next element.
-     *
-     * @return mixed
      */
-    public static function xmlDeserialize(Reader $reader)
+    public static function xmlDeserialize(Reader $reader): self
     {
         $tree = $reader->parseInnerTree()[0];
 

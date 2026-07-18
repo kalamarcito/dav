@@ -29,17 +29,15 @@ class Plugin extends DAV\ServerPlugin
      */
     protected $server;
 
-    const SYNCTOKEN_PREFIX = 'http://sabre.io/ns/sync/';
+    public const SYNCTOKEN_PREFIX = 'http://sabre.io/ns/sync/';
 
     /**
      * Returns a plugin name.
      *
      * Using this name other plugins will be able to access other plugins
      * using \Sabre\DAV\Server::getPlugin
-     *
-     * @return string
      */
-    public function getPluginName()
+    public function getPluginName(): string
     {
         return 'sync';
     }
@@ -52,7 +50,7 @@ class Plugin extends DAV\ServerPlugin
     public function initialize(DAV\Server $server)
     {
         $this->server = $server;
-        $server->xml->elementMap['{DAV:}sync-collection'] = \Sabre\DAV\Xml\Request\SyncCollectionReport::class;
+        $server->xml->elementMap['{DAV:}sync-collection'] = SyncCollectionReport::class;
 
         $self = $this;
 
@@ -77,10 +75,8 @@ class Plugin extends DAV\ServerPlugin
      * implement them
      *
      * @param string $uri
-     *
-     * @return array
      */
-    public function getSupportedReportSet($uri)
+    public function getSupportedReportSet($uri): array
     {
         $node = $this->server->tree->getNodeForPath($uri);
         if ($node instanceof ISyncCollection && $node->getSyncToken()) {
@@ -218,8 +214,8 @@ class Plugin extends DAV\ServerPlugin
                 $node = $this->server->tree->getNodeForPath($condition['uri']);
 
                 if (
-                    $node instanceof ISyncCollection &&
-                    $node->getSyncToken() == substr($token['token'], strlen(self::SYNCTOKEN_PREFIX))
+                    $node instanceof ISyncCollection
+                    && $node->getSyncToken() == substr($token['token'], strlen(self::SYNCTOKEN_PREFIX))
                 ) {
                     $conditions[$kk]['tokens'][$ii]['validToken'] = true;
                 }
@@ -235,10 +231,8 @@ class Plugin extends DAV\ServerPlugin
      *
      * The description key in the returned array may contain html and will not
      * be sanitized.
-     *
-     * @return array
      */
-    public function getPluginInfo()
+    public function getPluginInfo(): array
     {
         return [
             'name' => $this->getPluginName(),

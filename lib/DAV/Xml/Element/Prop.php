@@ -38,8 +38,6 @@ class Prop implements XmlDeserializable
      *
      * $reader->parseInnerTree() will parse the entire sub-tree, and advance to
      * the next element.
-     *
-     * @return mixed
      */
     public static function xmlDeserialize(Reader $reader)
     {
@@ -77,15 +75,15 @@ class Prop implements XmlDeserializable
      *   * name - A clark-notation XML element name.
      *   * value - The parsed value.
      *
-     * @return array
+     * @return array{name: ?string, value: mixed}
      */
-    private static function parseCurrentElement(Reader $reader)
+    private static function parseCurrentElement(Reader $reader): array
     {
         $name = $reader->getClark();
 
         if (array_key_exists($name, $reader->elementMap)) {
             $deserializer = $reader->elementMap[$name];
-            if (is_subclass_of($deserializer, \Sabre\Xml\XmlDeserializable::class)) {
+            if (is_subclass_of($deserializer, XmlDeserializable::class)) {
                 $value = call_user_func([$deserializer, 'xmlDeserialize'], $reader);
             } elseif (is_callable($deserializer)) {
                 $value = call_user_func($deserializer, $reader);

@@ -192,11 +192,9 @@ class AddressBook extends DAV\Collection implements IAddressBook, DAV\IPropertie
      *
      * If the array is empty, it means 'all properties' were requested.
      *
-     * @param array $properties
-     *
      * @return array
      */
-    public function getProperties($properties)
+    public function getProperties(array $properties)
     {
         $response = [];
         foreach ($properties as $propertyName) {
@@ -250,14 +248,14 @@ class AddressBook extends DAV\Collection implements IAddressBook, DAV\IPropertie
     public function getSyncToken()
     {
         if (
-            $this->carddavBackend instanceof Backend\SyncSupport &&
-            isset($this->addressBookInfo['{DAV:}sync-token'])
+            $this->carddavBackend instanceof Backend\SyncSupport
+            && isset($this->addressBookInfo['{DAV:}sync-token'])
         ) {
             return $this->addressBookInfo['{DAV:}sync-token'];
         }
         if (
-            $this->carddavBackend instanceof Backend\SyncSupport &&
-            isset($this->addressBookInfo['{http://sabredav.org/ns}sync-token'])
+            $this->carddavBackend instanceof Backend\SyncSupport
+            && isset($this->addressBookInfo['{http://sabredav.org/ns}sync-token'])
         ) {
             return $this->addressBookInfo['{http://sabredav.org/ns}sync-token'];
         }

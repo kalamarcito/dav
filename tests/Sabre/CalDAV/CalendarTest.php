@@ -9,12 +9,12 @@ use Sabre\DAV\PropPatch;
 class CalendarTest extends \PHPUnit\Framework\TestCase
 {
     /**
-     * @var Sabre\CalDAV\Backend\PDO
+     * @var Backend\PDO
      */
-    protected $backend;
+    private $backend;
     protected $principalBackend;
     /**
-     * @var Sabre\CalDAV\Calendar
+     * @var Calendar
      */
     protected $calendar;
     /**

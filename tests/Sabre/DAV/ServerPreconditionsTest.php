@@ -10,7 +10,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
 {
     public function testIfMatchNoNode()
     {
-        $this->expectException(\Sabre\DAV\Exception\PreconditionFailed::class);
+        $this->expectException(Exception\PreconditionFailed::class);
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('GET', '/bar', ['If-Match' => '*']);
@@ -29,7 +29,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
 
     public function testIfMatchWrongEtag()
     {
-        $this->expectException(\Sabre\DAV\Exception\PreconditionFailed::class);
+        $this->expectException(Exception\PreconditionFailed::class);
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('GET', '/foo', ['If-Match' => '1234']);
@@ -80,7 +80,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
 
     public function testIfNoneMatchHasNode()
     {
-        $this->expectException(\Sabre\DAV\Exception\PreconditionFailed::class);
+        $this->expectException(Exception\PreconditionFailed::class);
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('POST', '/foo', ['If-None-Match' => '*']);
@@ -108,7 +108,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
 
     public function testIfNoneMatchCorrectEtag()
     {
-        $this->expectException(\Sabre\DAV\Exception\PreconditionFailed::class);
+        $this->expectException(Exception\PreconditionFailed::class);
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('POST', '/foo', ['If-None-Match' => '"abc123"']);
@@ -118,7 +118,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
 
     public function testIfNoneMatchCorrectEtagMultiple()
     {
-        $this->expectException(\Sabre\DAV\Exception\PreconditionFailed::class);
+        $this->expectException(Exception\PreconditionFailed::class);
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('POST', '/foo', ['If-None-Match' => '"1234, "abc123"']);
@@ -131,7 +131,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('GET', '/foo', ['If-None-Match' => '"abc123"']);
-        $server->httpResponse = new HTTP\ResponseMock();
+        $server->httpResponse = new HTTP\Response();
 
         self::assertFalse($server->checkPreconditions($httpRequest, $server->httpResponse));
         self::assertEquals(304, $server->httpResponse->getStatus());
@@ -149,7 +149,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
         HTTP\SapiMock::$sent = 0;
         $httpRequest = new HTTP\Request('GET', '/foo', ['If-None-Match' => '"abc123"']);
         $server->httpRequest = $httpRequest;
-        $server->httpResponse = new HTTP\ResponseMock();
+        $server->httpResponse = new HTTP\Response();
 
         $server->exec();
 
@@ -169,10 +169,10 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
         $httpRequest = new HTTP\Request('GET', '/foo', [
             'If-Modified-Since' => 'Sun, 06 Nov 1994 08:49:37 GMT',
         ]);
-        $server->httpResponse = new HTTP\ResponseMock();
+        $server->httpResponse = new HTTP\Response();
         self::assertFalse($server->checkPreconditions($httpRequest, $server->httpResponse));
 
-        self::assertEquals(304, $server->httpResponse->status);
+        self::assertEquals(304, $server->httpResponse->getStatus());
         self::assertEquals([
             'Last-Modified' => ['Sat, 06 Apr 1985 23:30:00 GMT'],
         ], $server->httpResponse->getHeaders());
@@ -186,7 +186,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
             'If-Modified-Since' => 'Tue, 06 Nov 1984 08:49:37 GMT',
         ]);
 
-        $httpResponse = new HTTP\ResponseMock();
+        $httpResponse = new HTTP\Response();
         self::assertTrue($server->checkPreconditions($httpRequest, $httpResponse));
     }
 
@@ -197,7 +197,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
         $httpRequest = new HTTP\Request('GET', '/foo', [
             'If-Modified-Since' => 'Your mother',
         ]);
-        $httpResponse = new HTTP\ResponseMock();
+        $httpResponse = new HTTP\Response();
 
         // Invalid dates must be ignored, so this should return true
         self::assertTrue($server->checkPreconditions($httpRequest, $httpResponse));
@@ -210,7 +210,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
         $httpRequest = new HTTP\Request('GET', '/foo', [
             'If-Unmodified-Since' => 'Sun, 06 Nov 1994 08:49:37 EST',
         ]);
-        $httpResponse = new HTTP\ResponseMock();
+        $httpResponse = new HTTP\Response();
         self::assertTrue($server->checkPreconditions($httpRequest, $httpResponse));
     }
 
@@ -227,13 +227,13 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
 
     public function testIfUnmodifiedSinceModified()
     {
-        $this->expectException(\Sabre\DAV\Exception\PreconditionFailed::class);
+        $this->expectException(Exception\PreconditionFailed::class);
         $root = new SimpleCollection('root', [new ServerPreconditionsNode()]);
         $server = new Server($root);
         $httpRequest = new HTTP\Request('GET', '/foo', [
             'If-Unmodified-Since' => 'Tue, 06 Nov 1984 08:49:37 GMT',
         ]);
-        $httpResponse = new HTTP\ResponseMock();
+        $httpResponse = new HTTP\Response();
         $server->checkPreconditions($httpRequest, $httpResponse);
     }
 
@@ -244,7 +244,7 @@ class ServerPreconditionsTest extends \PHPUnit\Framework\TestCase
         $httpRequest = new HTTP\Request('GET', '/foo', [
             'If-Unmodified-Since' => 'Sun, 06 Nov 1984 08:49:37 CET',
         ]);
-        $httpResponse = new HTTP\ResponseMock();
+        $httpResponse = new HTTP\Response();
         self::assertTrue($server->checkPreconditions($httpRequest, $httpResponse));
     }
 }

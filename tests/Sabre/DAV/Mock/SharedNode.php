@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Sabre\DAV\Mock;
 
 use Sabre\DAV\Sharing\ISharedNode;
-use Sabre\DAV\Sharing\Sharee;
+use Sabre\DAV\Xml\Element\Sharee;
 
 class SharedNode extends \Sabre\DAV\Node implements ISharedNode
 {
@@ -104,7 +104,7 @@ class SharedNode extends \Sabre\DAV\Node implements ISharedNode
      *
      * * $properties
      *
-     * @return \Sabre\DAV\Xml\Element\Sharee[]
+     * @return Sharee[]
      */
     public function getInvites()
     {

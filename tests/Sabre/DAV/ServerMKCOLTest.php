@@ -17,7 +17,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
 
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -25,7 +25,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Length' => ['0'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(201, $this->response->status);
+        self::assertEquals(201, $this->response->getStatus());
         self::assertEquals('', $this->response->getBodyAsString());
         self::assertTrue(is_dir($this->tempDir.'/testcol'));
     }
@@ -42,7 +42,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
 
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('Hello');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -50,7 +50,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Type' => ['application/xml; charset=utf-8'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(415, $this->response->status);
+        self::assertEquals(415, $this->response->getStatus());
     }
 
     /**
@@ -66,7 +66,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
 
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('Hello');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -90,7 +90,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
 
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('<?xml version="1.0"?><html></html>');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -121,7 +121,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
     </prop>
   </set>
 </mkcol>');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -129,7 +129,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Type' => ['application/xml; charset=utf-8'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(400, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(400, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -152,7 +152,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
     </prop>
   </set>
 </mkcol>');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -160,7 +160,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Type' => ['application/xml; charset=utf-8'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(403, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(403, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -183,7 +183,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
     </prop>
   </set>
 </mkcol>');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -191,7 +191,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Length' => ['0'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(201, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(201, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -216,7 +216,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
     </prop>
   </set>
 </mkcol>');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -224,7 +224,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Length' => ['0'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(201, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(201, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -240,7 +240,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('');
 
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -248,7 +248,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Type' => ['application/xml; charset=utf-8'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(409, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(409, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -264,7 +264,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('');
 
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -272,7 +272,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Content-Type' => ['application/xml; charset=utf-8'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(409, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(409, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -288,7 +288,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
         $request = HTTP\Sapi::createFromServerArray($serverVars);
         $request->setBody('');
 
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         self::assertEquals([
@@ -297,7 +297,7 @@ class ServerMKCOLTest extends AbstractServerTestCase
             'Allow' => ['OPTIONS, GET, HEAD, DELETE, PROPFIND, PUT, PROPPATCH, COPY, MOVE, REPORT'],
         ], $this->response->getHeaders());
 
-        self::assertEquals(405, $this->response->status, 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
+        self::assertEquals(405, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$this->response->getBodyAsString());
     }
 
     /**
@@ -320,11 +320,11 @@ class ServerMKCOLTest extends AbstractServerTestCase
     </prop>
   </set>
 </mkcol>');
-        $this->server->httpRequest = ($request);
+        $this->server->httpRequest = $request;
         $this->server->exec();
 
         $bodyAsString = $this->response->getBodyAsString();
-        self::assertEquals(207, $this->response->status, 'Wrong statuscode received. Full response body: '.$bodyAsString);
+        self::assertEquals(207, $this->response->getStatus(), 'Wrong statuscode received. Full response body: '.$bodyAsString);
 
         self::assertEquals([
             'X-Sabre-Version' => [Version::VERSION],

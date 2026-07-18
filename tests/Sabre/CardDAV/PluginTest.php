@@ -10,7 +10,7 @@ class PluginTest extends AbstractPluginTestCase
 {
     public function testConstruct()
     {
-        self::assertEquals('{'.Plugin::NS_CARDDAV.'}addressbook', $this->server->resourceTypeMapping[\Sabre\CardDAV\IAddressBook::class]);
+        self::assertEquals('{'.Plugin::NS_CARDDAV.'}addressbook', $this->server->resourceTypeMapping[IAddressBook::class]);
 
         self::assertContains('addressbook', $this->plugin->getFeatures());
         self::assertEquals('carddav', $this->plugin->getPluginInfo()['name']);
@@ -50,7 +50,7 @@ class PluginTest extends AbstractPluginTestCase
 
     public function testReportPassThrough()
     {
-        self::assertNull($this->plugin->report('{DAV:}foo', new \DomDocument(), ''));
+        self::assertNull($this->plugin->report('{DAV:}foo', new \DOMDocument(), ''));
     }
 
     public function testHTMLActionsPanel()
@@ -73,11 +73,11 @@ class PluginTest extends AbstractPluginTestCase
         $this->plugin->propFindEarly($propFind, $node);
 
         self::assertInstanceOf(
-            \Sabre\CardDAV\Xml\Property\SupportedAddressData::class,
+            Xml\Property\SupportedAddressData::class,
             $propFind->get($ns.'supported-address-data')
         );
         self::assertInstanceOf(
-            \Sabre\CardDAV\Xml\Property\SupportedCollationSet::class,
+            Xml\Property\SupportedCollationSet::class,
             $propFind->get($ns.'supported-collation-set')
         );
     }
@@ -85,7 +85,7 @@ class PluginTest extends AbstractPluginTestCase
     public function testGetTransform()
     {
         $request = new \Sabre\HTTP\Request('GET', '/addressbooks/user1/book1/card1', ['Accept' => 'application/vcard+json']);
-        $response = new \Sabre\HTTP\ResponseMock();
+        $response = new \Sabre\HTTP\Response();
         $this->server->invokeMethod($request, $response);
 
         self::assertEquals(200, $response->getStatus());
@@ -94,7 +94,7 @@ class PluginTest extends AbstractPluginTestCase
     public function testGetWithoutContentType()
     {
         $request = new \Sabre\HTTP\Request('GET', '/');
-        $response = new \Sabre\HTTP\ResponseMock();
+        $response = new \Sabre\HTTP\Response();
         $this->plugin->httpAfterGet($request, $response);
         self::assertTrue(true);
     }

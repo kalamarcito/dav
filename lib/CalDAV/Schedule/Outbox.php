@@ -55,7 +55,7 @@ class Outbox extends DAV\Collection implements IOutbox
     /**
      * Returns an array with all the child nodes.
      *
-     * @return \Sabre\DAV\INode[]
+     * @return DAV\INode[]
      */
     public function getChildren()
     {
@@ -84,7 +84,7 @@ class Outbox extends DAV\Collection implements IOutbox
      *   * 'protected' (optional), indicating that this ACE is not allowed to
      *      be updated.
      *
-     * @return array
+     * @return list<array{principal: string, privilege: string, protected?: bool}>
      */
     public function getACL()
     {

@@ -28,7 +28,7 @@ class SharingPluginTest extends AbstractDAVServerTestCase
                 'principaluri' => 'principals/user1',
                 'id' => 2,
                 'uri' => 'cal2',
-                'share-access' => \Sabre\DAV\Sharing\Plugin::ACCESS_READWRITE,
+                'share-access' => DAV\Sharing\Plugin::ACCESS_READWRITE,
             ],
             [
                 'principaluri' => 'principals/user1',
@@ -45,7 +45,7 @@ class SharingPluginTest extends AbstractDAVServerTestCase
 
     public function testSimple()
     {
-        self::assertInstanceOf(\Sabre\CalDAV\SharingPlugin::class, $this->server->getPlugin('caldav-sharing'));
+        self::assertInstanceOf(SharingPlugin::class, $this->server->getPlugin('caldav-sharing'));
         self::assertEquals(
             'caldav-sharing',
             $this->caldavSharingPlugin->getPluginInfo()['name']
@@ -75,8 +75,8 @@ class SharingPluginTest extends AbstractDAVServerTestCase
             '{'.Plugin::NS_CALENDARSERVER.'}allowed-sharing-modes',
         ]);
 
-        self::assertInstanceOf(\Sabre\CalDAV\Xml\Property\Invite::class, $props['{'.Plugin::NS_CALENDARSERVER.'}invite']);
-        self::assertInstanceOf(\Sabre\CalDAV\Xml\Property\AllowedSharingModes::class, $props['{'.Plugin::NS_CALENDARSERVER.'}allowed-sharing-modes']);
+        self::assertInstanceOf(Xml\Property\Invite::class, $props['{'.Plugin::NS_CALENDARSERVER.'}invite']);
+        self::assertInstanceOf(Xml\Property\AllowedSharingModes::class, $props['{'.Plugin::NS_CALENDARSERVER.'}allowed-sharing-modes']);
     }
 
     public function testBeforeGetSharedCalendar()
@@ -86,8 +86,8 @@ class SharingPluginTest extends AbstractDAVServerTestCase
             '{'.Plugin::NS_CALENDARSERVER.'}invite',
         ]);
 
-        self::assertInstanceOf(\Sabre\CalDAV\Xml\Property\Invite::class, $props['{'.Plugin::NS_CALENDARSERVER.'}invite']);
-        //self::assertInstanceOf('Sabre\\DAV\\Xml\\Property\\Href', $props['{' . Plugin::NS_CALENDARSERVER . '}shared-url']);
+        self::assertInstanceOf(Xml\Property\Invite::class, $props['{'.Plugin::NS_CALENDARSERVER.'}invite']);
+        // self::assertInstanceOf('Sabre\\DAV\\Xml\\Property\\Href', $props['{' . Plugin::NS_CALENDARSERVER . '}shared-url']);
     }
 
     public function testUpdateResourceType()
@@ -130,7 +130,7 @@ class SharingPluginTest extends AbstractDAVServerTestCase
 
         $response = $this->request($request);
 
-        self::assertEquals(501, $response->status, $response->getBodyAsString());
+        self::assertEquals(501, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testUnknownMethodNoXML()
@@ -143,7 +143,7 @@ class SharingPluginTest extends AbstractDAVServerTestCase
 
         $response = $this->request($request);
 
-        self::assertEquals(501, $response->status, $response->getBodyAsString());
+        self::assertEquals(501, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testUnknownMethodNoNode()
@@ -156,7 +156,7 @@ class SharingPluginTest extends AbstractDAVServerTestCase
 
         $response = $this->request($request);
 
-        self::assertEquals(501, $response->status, $response->getBodyAsString());
+        self::assertEquals(501, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testShareRequest()
@@ -188,8 +188,8 @@ RRR;
                     'properties' => [
                         '{DAV:}displayname' => 'Joe Shmoe',
                     ],
-                    'access' => \Sabre\DAV\Sharing\Plugin::ACCESS_READWRITE,
-                    'inviteStatus' => \Sabre\DAV\Sharing\Plugin::INVITE_NORESPONSE,
+                    'access' => DAV\Sharing\Plugin::ACCESS_READWRITE,
+                    'inviteStatus' => DAV\Sharing\Plugin::INVITE_NORESPONSE,
                     'comment' => '',
                 ]),
             ],
@@ -249,7 +249,7 @@ RRR;
 
         $request->setBody($xml);
         $response = $this->request($request);
-        self::assertEquals(200, $response->status, $response->getBodyAsString());
+        self::assertEquals(200, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testInviteBadXML()
@@ -266,7 +266,7 @@ RRR;
 ';
         $request->setBody($xml);
         $response = $this->request($request);
-        self::assertEquals(400, $response->status, $response->getBodyAsString());
+        self::assertEquals(400, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testInviteWrongUrl()
@@ -284,7 +284,7 @@ RRR;
 ';
         $request->setBody($xml);
         $response = $this->request($request);
-        self::assertEquals(501, $response->status, $response->getBodyAsString());
+        self::assertEquals(501, $response->getStatus(), $response->getBodyAsString());
 
         // If the plugin did not handle this request, it must ensure that the
         // body is still accessible by other plugins.
@@ -294,7 +294,7 @@ RRR;
     public function testPostWithoutContentType()
     {
         $request = new HTTP\Request('POST', '/');
-        $response = new HTTP\ResponseMock();
+        $response = new HTTP\Response();
 
         $this->caldavSharingPlugin->httpPost($request, $response);
         self::assertTrue(true);
@@ -311,7 +311,7 @@ RRR;
         $request->setBody($xml);
 
         $response = $this->request($request);
-        self::assertEquals(202, $response->status, $response->getBodyAsString());
+        self::assertEquals(202, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testUnpublish()
@@ -329,7 +329,7 @@ RRR;
         $request->setBody($xml);
 
         $response = $this->request($request);
-        self::assertEquals(200, $response->status, $response->getBodyAsString());
+        self::assertEquals(200, $response->getStatus(), $response->getBodyAsString());
     }
 
     public function testPublishWrongUrl()
@@ -378,6 +378,6 @@ RRR;
         $request->setBody($xml);
 
         $response = $this->request($request);
-        self::assertEquals(501, $response->status, $response->getBodyAsString());
+        self::assertEquals(501, $response->getStatus(), $response->getBodyAsString());
     }
 }

@@ -28,12 +28,12 @@ class Plugin extends DAV\ServerPlugin
     /**
      * Url to the addressbooks.
      */
-    const ADDRESSBOOK_ROOT = 'addressbooks';
+    public const ADDRESSBOOK_ROOT = 'addressbooks';
 
     /**
      * xml namespace for CardDAV elements.
      */
-    const NS_CARDDAV = 'urn:ietf:params:xml:ns:carddav';
+    public const NS_CARDDAV = 'urn:ietf:params:xml:ns:carddav';
 
     /**
      * Add urls to this property to have them automatically exposed as
@@ -45,22 +45,20 @@ class Plugin extends DAV\ServerPlugin
 
     /**
      * Server class.
-     *
-     * @var DAV\Server
      */
-    protected $server;
+    protected DAV\Server $server;
 
     /**
      * The default PDO storage uses a MySQL MEDIUMBLOB for iCalendar data,
      * which can hold up to 2^24 = 16777216 bytes. This is plenty. We're
      * capping it to 10M here.
      */
-    protected $maxResourceSize = 10000000;
+    protected int $maxResourceSize = 10000000;
 
     /**
      * Initializes the plugin.
      */
-    public function initialize(DAV\Server $server)
+    public function initialize(DAV\Server $server): void
     {
         /* Events */
         $server->on('propFind', [$this, 'propFindEarly']);
@@ -73,12 +71,12 @@ class Plugin extends DAV\ServerPlugin
 
         $server->xml->namespaceMap[self::NS_CARDDAV] = 'card';
 
-        $server->xml->elementMap['{'.self::NS_CARDDAV.'}addressbook-query'] = \Sabre\CardDAV\Xml\Request\AddressBookQueryReport::class;
-        $server->xml->elementMap['{'.self::NS_CARDDAV.'}addressbook-multiget'] = \Sabre\CardDAV\Xml\Request\AddressBookMultiGetReport::class;
+        $server->xml->elementMap['{'.self::NS_CARDDAV.'}addressbook-query'] = Xml\Request\AddressBookQueryReport::class;
+        $server->xml->elementMap['{'.self::NS_CARDDAV.'}addressbook-multiget'] = Xml\Request\AddressBookMultiGetReport::class;
 
         /* Mapping Interfaces to {DAV:}resourcetype values */
-        $server->resourceTypeMapping[\Sabre\CardDAV\IAddressBook::class] = '{'.self::NS_CARDDAV.'}addressbook';
-        $server->resourceTypeMapping[\Sabre\CardDAV\IDirectory::class] = '{'.self::NS_CARDDAV.'}directory';
+        $server->resourceTypeMapping[IAddressBook::class] = '{'.self::NS_CARDDAV.'}addressbook';
+        $server->resourceTypeMapping[IDirectory::class] = '{'.self::NS_CARDDAV.'}directory';
 
         /* Adding properties that may never be changed */
         $server->protectedProperties[] = '{'.self::NS_CARDDAV.'}supported-address-data';
@@ -86,7 +84,7 @@ class Plugin extends DAV\ServerPlugin
         $server->protectedProperties[] = '{'.self::NS_CARDDAV.'}addressbook-home-set';
         $server->protectedProperties[] = '{'.self::NS_CARDDAV.'}supported-collation-set';
 
-        $server->xml->elementMap['{http://calendarserver.org/ns/}me-card'] = \Sabre\DAV\Xml\Property\Href::class;
+        $server->xml->elementMap['{http://calendarserver.org/ns/}me-card'] = DAV\Xml\Property\Href::class;
 
         $this->server = $server;
     }
@@ -95,10 +93,8 @@ class Plugin extends DAV\ServerPlugin
      * Returns a list of supported features.
      *
      * This is used in the DAV: header in the OPTIONS and PROPFIND requests.
-     *
-     * @return array
      */
-    public function getFeatures()
+    public function getFeatures(): array
     {
         return ['addressbook'];
     }
@@ -110,17 +106,15 @@ class Plugin extends DAV\ServerPlugin
      * Note that you still need to subscribe to the 'report' event to actually
      * implement them
      *
-     * @param string $uri
-     *
-     * @return array
+     * @return list<non-empty-string>
      */
-    public function getSupportedReportSet($uri)
+    public function getSupportedReportSet(string $uri): array
     {
         $node = $this->server->tree->getNodeForPath($uri);
         if ($node instanceof IAddressBook || $node instanceof ICard) {
             return [
-                 '{'.self::NS_CARDDAV.'}addressbook-multiget',
-                 '{'.self::NS_CARDDAV.'}addressbook-query',
+                '{'.self::NS_CARDDAV.'}addressbook-multiget',
+                '{'.self::NS_CARDDAV.'}addressbook-query',
             ];
         }
 
@@ -130,7 +124,7 @@ class Plugin extends DAV\ServerPlugin
     /**
      * Adds all CardDAV-specific properties.
      */
-    public function propFindEarly(DAV\PropFind $propFind, DAV\INode $node)
+    public function propFindEarly(DAV\PropFind $propFind, DAV\INode $node): void
     {
         $ns = '{'.self::NS_CARDDAV.'}';
 
@@ -175,13 +169,11 @@ class Plugin extends DAV\ServerPlugin
     /**
      * This functions handles REPORT requests specific to CardDAV.
      *
-     * @param string   $reportName
-     * @param \DOMNode $dom
-     * @param mixed    $path
+     * @param Xml\Request\AddressBookMultiGetReport|Xml\Request\AddressBookQueryReport $dom
      *
-     * @return bool
+     * @return false|void
      */
-    public function report($reportName, $dom, $path)
+    public function report(string $reportName, $dom, string $path)
     {
         switch ($reportName) {
             case '{'.self::NS_CARDDAV.'}addressbook-multiget':
@@ -201,12 +193,8 @@ class Plugin extends DAV\ServerPlugin
 
     /**
      * Returns the addressbook home for a given principal.
-     *
-     * @param string $principal
-     *
-     * @return string
      */
-    protected function getAddressbookHomeForPrincipal($principal)
+    protected function getAddressbookHomeForPrincipal(string $principal): string
     {
         list(, $principalId) = Uri\split($principal);
 
@@ -218,10 +206,8 @@ class Plugin extends DAV\ServerPlugin
      *
      * This report is used by the client to fetch the content of a series
      * of urls. Effectively avoiding a lot of redundant requests.
-     *
-     * @param Xml\Request\AddressBookMultiGetReport $report
      */
-    public function addressbookMultiGetReport($report)
+    public function addressbookMultiGetReport(Xml\Request\AddressBookMultiGetReport $report): void
     {
         $contentType = $report->contentType;
         $version = $report->version;
@@ -579,7 +565,7 @@ class Plugin extends DAV\ServerPlugin
                     $success = true;
                 }
 
-                // If there's no text-match, we can just check for existence
+            // If there's no text-match, we can just check for existence
             } elseif (!$filter['text-match'] || !$isDefined) {
                 $success = $isDefined;
             } else {
@@ -786,7 +772,7 @@ class Plugin extends DAV\ServerPlugin
             case 'application/vcard+json':
                 return 'jcard';
 
-        // @codeCoverageIgnoreStart
+                // @codeCoverageIgnoreStart
         }
         // @codeCoverageIgnoreEnd
     }
@@ -796,7 +782,6 @@ class Plugin extends DAV\ServerPlugin
      *
      * @param string|resource $data
      * @param string          $target
-     * @param array           $propertiesFilter
      *
      * @return string
      */
@@ -856,10 +841,8 @@ class Plugin extends DAV\ServerPlugin
      *
      * Using this name other plugins will be able to access other plugins
      * using DAV\Server::getPlugin
-     *
-     * @return string
      */
-    public function getPluginName()
+    public function getPluginName(): string
     {
         return 'carddav';
     }
@@ -872,10 +855,8 @@ class Plugin extends DAV\ServerPlugin
      *
      * The description key in the returned array may contain html and will not
      * be sanitized.
-     *
-     * @return array
      */
-    public function getPluginInfo()
+    public function getPluginInfo(): array
     {
         return [
             'name' => $this->getPluginName(),

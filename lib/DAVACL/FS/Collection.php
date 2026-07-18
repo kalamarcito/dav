@@ -57,9 +57,9 @@ class Collection extends BaseCollection implements IACL
      *
      * @param string $name
      *
-     * @throws NotFound
-     *
      * @return \Sabre\DAV\INode
+     *
+     * @throws NotFound
      */
     public function getChild($name)
     {
@@ -73,9 +73,9 @@ class Collection extends BaseCollection implements IACL
         }
         if (is_dir($path)) {
             return new self($path, $this->acl, $this->owner);
-        } else {
-            return new File($path, $this->acl, $this->owner);
         }
+
+        return new File($path, $this->acl, $this->owner);
     }
 
     /**
@@ -100,7 +100,7 @@ class Collection extends BaseCollection implements IACL
      *   * 'protected' (optional), indicating that this ACE is not allowed to
      *      be updated.
      *
-     * @return array
+     * @return list<array{principal: string, privilege: string, protected?: bool}>
      */
     public function getACL()
     {

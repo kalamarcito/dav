@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Sabre\DAV;
 
-use UnexpectedValueException;
-
 /**
  * This class represents a set of properties that are going to be updated.
  *
@@ -26,37 +24,33 @@ class PropPatch
      *
      * This is a key-value list. If the value is null, the property is supposed
      * to be deleted.
-     *
-     * @var array
      */
-    protected $mutations;
+    protected array $mutations;
 
     /**
      * A list of properties and the result of the update. The result is in the
-     * form of a HTTP status code.
+     * form of an HTTP status code.
      *
-     * @var array
+     * @var array<string, int>
      */
-    protected $result = [];
+    protected array $result = [];
 
     /**
      * This is the list of callbacks when we're performing the actual update.
      *
-     * @var array
+     * @var list<array{0: string|string[], 1: callable>
      */
-    protected $propertyUpdateCallbacks = [];
+    protected array $propertyUpdateCallbacks = [];
 
     /**
      * This property will be set to true if the operation failed.
-     *
-     * @var bool
      */
-    protected $failed = false;
+    protected bool $failed = false;
 
     /**
      * Constructor.
      *
-     * @param array $mutations A list of updates
+     * @param array<string, mixed> $mutations A list of updates
      */
     public function __construct(array $mutations)
     {
@@ -83,10 +77,12 @@ class PropPatch
      *
      * @param string|string[] $properties
      */
-    public function handle($properties, callable $callback)
+    public function handle($properties, callable $callback): void
     {
+        /** @var list<string> $usedProperties */
         $usedProperties = [];
         foreach ((array) $properties as $propertyName) {
+            /** @var string $propertyName */
             if (array_key_exists($propertyName, $this->mutations) && !isset($this->result[$propertyName])) {
                 $usedProperties[] = $propertyName;
                 // HTTP Accepted
@@ -112,7 +108,7 @@ class PropPatch
      * been handled by anything else yet. Note that you effectively claim with
      * this that you promise to process _all_ properties that are coming in.
      */
-    public function handleRemaining(callable $callback)
+    public function handleRemaining(callable $callback): void
     {
         $properties = $this->getRemainingMutations();
         if (!$properties) {
@@ -135,9 +131,8 @@ class PropPatch
      * Sets the result code for one or more properties.
      *
      * @param string|string[] $properties
-     * @param int             $resultCode
      */
-    public function setResultCode($properties, $resultCode)
+    public function setResultCode($properties, int $resultCode): void
     {
         foreach ((array) $properties as $propertyName) {
             $this->result[$propertyName] = $resultCode;
@@ -150,10 +145,8 @@ class PropPatch
 
     /**
      * Sets the result code for all properties that did not have a result yet.
-     *
-     * @param int $resultCode
      */
-    public function setRemainingResultCode($resultCode)
+    public function setRemainingResultCode(int $resultCode): void
     {
         $this->setResultCode(
             $this->getRemainingMutations(),
@@ -166,9 +159,9 @@ class PropPatch
      *
      * This method returns a list of property names, but not its values.
      *
-     * @return string[]
+     * @return list<string>
      */
-    public function getRemainingMutations()
+    public function getRemainingMutations(): array
     {
         $remaining = [];
         foreach ($this->mutations as $propertyName => $propValue) {
@@ -185,9 +178,9 @@ class PropPatch
      *
      * This method returns list of properties and their values.
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function getRemainingValues()
+    public function getRemainingValues(): array
     {
         $remaining = [];
         foreach ($this->mutations as $propertyName => $propValue) {
@@ -204,10 +197,8 @@ class PropPatch
      *
      * This method returns true or false depending on if the operation was
      * successful.
-     *
-     * @return bool
      */
-    public function commit()
+    public function commit(): bool
     {
         // First we validate if every property has a handler
         foreach ($this->mutations as $propertyName => $value) {
@@ -246,10 +237,8 @@ class PropPatch
 
     /**
      * Executes a property callback with the single-property syntax.
-     *
-     * @param string $propertyName
      */
-    private function doCallBackSingleProp($propertyName, callable $callback)
+    private function doCallBackSingleProp(string $propertyName, callable $callback): void
     {
         $result = $callback($this->mutations[$propertyName]);
         if (is_bool($result)) {
@@ -267,7 +256,7 @@ class PropPatch
             }
         }
         if (!is_int($result)) {
-            throw new UnexpectedValueException('A callback sent to handle() did not return an int or a bool');
+            throw new \UnexpectedValueException('A callback sent to handle() did not return an int or a bool');
         }
         $this->result[$propertyName] = $result;
         if ($result >= 400) {
@@ -311,16 +300,16 @@ class PropPatch
                 $this->result[$propertyName] = 403;
             }
         } else {
-            throw new UnexpectedValueException('A callback sent to handle() did not return an array or a bool');
+            throw new \UnexpectedValueException('A callback sent to handle() did not return an array or a bool');
         }
     }
 
     /**
      * Returns the result of the operation.
      *
-     * @return array
+     * @return array<string, int>
      */
-    public function getResult()
+    public function getResult(): array
     {
         return $this->result;
     }
@@ -328,9 +317,9 @@ class PropPatch
     /**
      * Returns the full list of mutations.
      *
-     * @return array
+     * @return array<string, mixed>
      */
-    public function getMutations()
+    public function getMutations(): array
     {
         return $this->mutations;
     }

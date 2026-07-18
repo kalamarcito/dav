@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Sabre\CalDAV\Schedule;
 
-use DateTimeZone;
 use Sabre\CalDAV\ICalendar;
 use Sabre\CalDAV\ICalendarObject;
 use Sabre\CalDAV\Xml\Property\ScheduleCalendarTransp;
@@ -24,7 +23,6 @@ use Sabre\HTTP\RequestInterface;
 use Sabre\HTTP\ResponseInterface;
 use Sabre\VObject;
 use Sabre\VObject\Component\VCalendar;
-use Sabre\VObject\ITip;
 use Sabre\VObject\ITip\Broker;
 use Sabre\VObject\ITip\Message;
 use Sabre\VObject\Reader;
@@ -61,21 +59,17 @@ class Plugin extends ServerPlugin
     /**
      * This is the official CalDAV namespace.
      */
-    const NS_CALDAV = 'urn:ietf:params:xml:ns:caldav';
+    public const NS_CALDAV = 'urn:ietf:params:xml:ns:caldav';
 
     /**
      * Reference to main Server object.
-     *
-     * @var Server
      */
-    protected $server;
+    protected Server $server;
 
     /**
      * Returns a list of features for the DAV: HTTP header.
-     *
-     * @return array
      */
-    public function getFeatures()
+    public function getFeatures(): array
     {
         return ['calendar-auto-schedule', 'calendar-availability'];
     }
@@ -85,10 +79,8 @@ class Plugin extends ServerPlugin
      *
      * Using this name other plugins will be able to access other plugins
      * using Server::getPlugin
-     *
-     * @return string
      */
-    public function getPluginName()
+    public function getPluginName(): string
     {
         return 'caldav-schedule';
     }
@@ -96,7 +88,7 @@ class Plugin extends ServerPlugin
     /**
      * Initializes the plugin.
      */
-    public function initialize(Server $server)
+    public function initialize(Server $server): void
     {
         $this->server = $server;
         $server->on('method:POST', [$this, 'httpPost']);
@@ -113,8 +105,8 @@ class Plugin extends ServerPlugin
          * This information ensures that the {DAV:}resourcetype property has
          * the correct values.
          */
-        $server->resourceTypeMapping[\Sabre\CalDAV\Schedule\IOutbox::class] = $ns.'schedule-outbox';
-        $server->resourceTypeMapping[\Sabre\CalDAV\Schedule\IInbox::class] = $ns.'schedule-inbox';
+        $server->resourceTypeMapping[IOutbox::class] = $ns.'schedule-outbox';
+        $server->resourceTypeMapping[IInbox::class] = $ns.'schedule-inbox';
 
         /*
          * Properties we protect are made read-only by the server.
@@ -134,12 +126,8 @@ class Plugin extends ServerPlugin
      *
      * This method is passed a uri. It should only return HTTP methods that are
      * available for the specified uri.
-     *
-     * @param string $uri
-     *
-     * @return array
      */
-    public function getHTTPMethods($uri)
+    public function getHTTPMethods(string $uri): array
     {
         try {
             $node = $this->server->tree->getNodeForPath($uri);
@@ -270,29 +258,27 @@ class Plugin extends ServerPlugin
             // old property to a different namespace.
             $availProp = '{'.self::NS_CALDAV.'}calendar-availability';
             $subPropFind = new PropFind(
-                 $propFind->getPath(),
-                 [$availProp]
-             );
+                $propFind->getPath(),
+                [$availProp]
+            );
 
             $this->server->getPropertiesByNode(
-                 $subPropFind,
-                 $node
-             );
+                $subPropFind,
+                $node
+            );
 
             $propFind->set(
-                 '{http://calendarserver.org/ns/}calendar-availability',
-                 $subPropFind->get($availProp),
-                 $subPropFind->getStatus($availProp)
-             );
+                '{http://calendarserver.org/ns/}calendar-availability',
+                $subPropFind->get($availProp),
+                $subPropFind->getStatus($availProp)
+            );
         });
     }
 
     /**
      * This method is called during property updates.
-     *
-     * @param string $path
      */
-    public function propPatch($path, PropPatch $propPatch)
+    public function propPatch(string $path, PropPatch $propPatch): void
     {
         // Mapping the old property to the new property.
         $propPatch->handle('{http://calendarserver.org/ns/}calendar-availability', function ($value) use ($path) {
@@ -346,7 +332,7 @@ class Plugin extends ServerPlugin
     /**
      * This method is responsible for delivering the ITip message.
      */
-    public function deliver(ITip\Message $iTipMessage)
+    public function deliver(Message $iTipMessage): void
     {
         $this->server->emit('schedule', [$iTipMessage]);
         if (!$iTipMessage->scheduleStatus) {
@@ -365,10 +351,8 @@ class Plugin extends ServerPlugin
      *
      * We use this event to make sure that when this happens, attendees get
      * cancellations, and organizers get 'DECLINED' statuses.
-     *
-     * @param string $path
      */
-    public function beforeUnbind($path)
+    public function beforeUnbind(string $path): void
     {
         // FIXME: We shouldn't trigger this functionality when we're issuing a
         // MOVE. This is a hack.
@@ -404,7 +388,7 @@ class Plugin extends ServerPlugin
      * This handler attempts to look at local accounts to deliver the
      * scheduling object.
      */
-    public function scheduleLocalDelivery(ITip\Message $iTipMessage)
+    public function scheduleLocalDelivery(Message $iTipMessage): void
     {
         $aclPlugin = $this->server->getPlugin('acl');
 
@@ -434,9 +418,9 @@ class Plugin extends ServerPlugin
             $principalUri,
             [
                 '{DAV:}principal-URL',
-                 $caldavNS.'calendar-home-set',
-                 $caldavNS.'schedule-inbox-URL',
-                 $caldavNS.'schedule-default-calendar-URL',
+                $caldavNS.'calendar-home-set',
+                $caldavNS.'schedule-inbox-URL',
+                $caldavNS.'schedule-default-calendar-URL',
                 '{http://sabredav.org/ns}email-address',
             ]
         );
@@ -547,7 +531,7 @@ class Plugin extends ServerPlugin
      *
      * We need to add a number of privileges for scheduling purposes.
      */
-    public function getSupportedPrivilegeSet(INode $node, array &$supportedPrivilegeSet)
+    public function getSupportedPrivilegeSet(INode $node, array &$supportedPrivilegeSet): void
     {
         $ns = '{'.self::NS_CALDAV.'}';
         if ($node instanceof IOutbox) {
@@ -610,7 +594,7 @@ class Plugin extends ServerPlugin
      * @param array                 $ignore    any addresses to not send messages to
      * @param bool                  $modified  a marker to indicate that the original object modified by this process
      */
-    protected function processICalendarChange($oldObject, VCalendar $newObject, array $addresses, array $ignore = [], &$modified = false)
+    protected function processICalendarChange($oldObject, VCalendar $newObject, array $addresses, array $ignore = [], &$modified = false): void
     {
         $broker = $this->createITipBroker();
         $messages = $broker->parseEvent($newObject, $addresses, $oldObject);
@@ -650,11 +634,9 @@ class Plugin extends ServerPlugin
     /**
      * Returns a list of addresses that are associated with a principal.
      *
-     * @param string $principal
-     *
-     * @return array
+     * @return list<string>
      */
-    protected function getAddressesForPrincipal($principal)
+    protected function getAddressesForPrincipal(string $principal): array
     {
         $CUAS = '{'.self::NS_CALDAV.'}calendar-user-address-set';
 
@@ -684,13 +666,13 @@ class Plugin extends ServerPlugin
      * extensions, but iCal depends on a feature from that spec, so we
      * implement it.
      */
-    public function outboxRequest(IOutbox $outboxNode, RequestInterface $request, ResponseInterface $response)
+    public function outboxRequest(IOutbox $outboxNode, RequestInterface $request, ResponseInterface $response): void
     {
         $outboxPath = $request->getPath();
 
         // Parsing the request body
         try {
-            $vObject = VObject\Reader::read($request->getBody());
+            $vObject = Reader::read($request->getBody());
         } catch (VObject\ParseException $e) {
             throw new BadRequest('The request body must be a valid iCalendar object. Parse error: '.$e->getMessage());
         }
@@ -737,7 +719,7 @@ class Plugin extends ServerPlugin
      * This method is responsible for parsing a free-busy query request and
      * returning its result in $response.
      */
-    protected function handleFreeBusyRequest(IOutbox $outbox, VObject\Component $vObject, RequestInterface $request, ResponseInterface $response)
+    protected function handleFreeBusyRequest(IOutbox $outbox, VObject\Component $vObject, RequestInterface $request, ResponseInterface $response): void
     {
         $vFreeBusy = $vObject->VFREEBUSY;
         $organizer = $vFreeBusy->ORGANIZER;
@@ -826,9 +808,9 @@ class Plugin extends ServerPlugin
      *
      * @param string $email address
      *
-     * @return array
+     * @return array{calendar-data?: VObject\Component, request-status: string, href: string}
      */
-    protected function getFreeBusyForEmail($email, \DateTimeInterface $start, \DateTimeInterface $end, VObject\Component $request)
+    protected function getFreeBusyForEmail(string $email, \DateTimeInterface $start, \DateTimeInterface $end, VObject\Component $request): array
     {
         $caldavNS = '{'.self::NS_CALDAV.'}';
 
@@ -874,7 +856,7 @@ class Plugin extends ServerPlugin
 
         // Grabbing the calendar list
         $objects = [];
-        $calendarTimeZone = new DateTimeZone('UTC');
+        $calendarTimeZone = new \DateTimeZone('UTC');
 
         foreach ($this->server->tree->getNodeForPath($homeSet)->getChildren() as $node) {
             if (!$node instanceof ICalendar) {
@@ -892,7 +874,7 @@ class Plugin extends ServerPlugin
             }
 
             if (isset($props[$ctz])) {
-                $vtimezoneObj = VObject\Reader::read($props[$ctz]);
+                $vtimezoneObj = Reader::read($props[$ctz]);
                 $calendarTimeZone = $vtimezoneObj->VTIMEZONE->getTimeZone();
 
                 // Destroy circular references so PHP can garbage collect the object.
@@ -933,7 +915,7 @@ class Plugin extends ServerPlugin
             $caldavNS.'calendar-availability'
         );
 
-        $vcalendar = new VObject\Component\VCalendar();
+        $vcalendar = new VCalendar();
         $vcalendar->METHOD = 'REPLY';
 
         $generator = new VObject\FreeBusyGenerator();
@@ -944,7 +926,7 @@ class Plugin extends ServerPlugin
 
         if ($inboxProps) {
             $generator->setVAvailability(
-                VObject\Reader::read(
+                Reader::read(
                     $inboxProps[$caldavNS.'calendar-availability']
                 )
             );
@@ -966,10 +948,8 @@ class Plugin extends ServerPlugin
     /**
      * This method checks the 'Schedule-Reply' header
      * and returns false if it's 'F', otherwise true.
-     *
-     * @return bool
      */
-    protected function scheduleReply(RequestInterface $request)
+    protected function scheduleReply(RequestInterface $request): bool
     {
         $scheduleReply = $request->getHeader('Schedule-Reply');
 
@@ -984,10 +964,8 @@ class Plugin extends ServerPlugin
      *
      * The description key in the returned array may contain html and will not
      * be sanitized.
-     *
-     * @return array
      */
-    public function getPluginInfo()
+    public function getPluginInfo(): array
     {
         return [
             'name' => $this->getPluginName(),

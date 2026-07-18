@@ -36,7 +36,7 @@ class Plugin extends ServerPlugin
      * This is useful if you want to allow both authenticated and
      * unauthenticated access to your server.
      *
-     * @param bool
+     * @var bool
      */
     public $autoRequireLogin = true;
 
@@ -55,8 +55,6 @@ class Plugin extends ServerPlugin
 
     /**
      * Creates the authentication plugin.
-     *
-     * @param Backend\BackendInterface $authBackend
      */
     public function __construct(?Backend\BackendInterface $authBackend = null)
     {
@@ -86,10 +84,8 @@ class Plugin extends ServerPlugin
      *
      * Using this name other plugins will be able to access other plugins
      * using DAV\Server::getPlugin
-     *
-     * @return string
      */
-    public function getPluginName()
+    public function getPluginName(): string
     {
         return 'auth';
     }
@@ -187,6 +183,7 @@ class Plugin extends ServerPlugin
 
             if ($result[0]) {
                 $this->currentPrincipal = $result[1];
+
                 // Exit early
                 return [true, $result[1]];
             }
@@ -242,9 +239,9 @@ class Plugin extends ServerPlugin
      * The description key in the returned array may contain html and will not
      * be sanitized.
      *
-     * @return array
+     * @return array{name: string, description: string, link: string}
      */
-    public function getPluginInfo()
+    public function getPluginInfo(): array
     {
         return [
             'name' => $this->getPluginName(),

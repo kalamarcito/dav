@@ -17,7 +17,7 @@ class MultiGetTest extends AbstractPluginTestCase
         ]);
 
         $request->setBody(
-'<?xml version="1.0"?>
+            '<?xml version="1.0"?>
 <c:addressbook-multiget xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:carddav">
     <d:prop>
       <d:getetag />
@@ -25,9 +25,9 @@ class MultiGetTest extends AbstractPluginTestCase
     </d:prop>
     <d:href>/addressbooks/user1/book1/card1</d:href>
 </c:addressbook-multiget>'
-            );
+        );
 
-        $response = new HTTP\ResponseMock();
+        $response = new HTTP\Response();
 
         $this->server->httpRequest = $request;
         $this->server->httpResponse = $response;
@@ -35,7 +35,7 @@ class MultiGetTest extends AbstractPluginTestCase
         $this->server->exec();
 
         $bodyAsString = $response->getBodyAsString();
-        self::assertEquals(207, $response->status, 'Incorrect status code. Full response body:'.$bodyAsString);
+        self::assertEquals(207, $response->getStatus(), 'Incorrect status code. Full response body:'.$bodyAsString);
 
         // using the client for parsing
         $client = new DAV\Client(['baseUri' => '/']);
@@ -60,7 +60,7 @@ class MultiGetTest extends AbstractPluginTestCase
         ]);
 
         $request->setBody(
-'<?xml version="1.0"?>
+            '<?xml version="1.0"?>
 <c:addressbook-multiget xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:carddav">
     <d:prop>
       <d:getetag />
@@ -68,9 +68,9 @@ class MultiGetTest extends AbstractPluginTestCase
     </d:prop>
     <d:href>/addressbooks/user1/book1/card1</d:href>
 </c:addressbook-multiget>'
-            );
+        );
 
-        $response = new HTTP\ResponseMock();
+        $response = new HTTP\Response();
 
         $this->server->httpRequest = $request;
         $this->server->httpResponse = $response;
@@ -78,7 +78,7 @@ class MultiGetTest extends AbstractPluginTestCase
         $this->server->exec();
 
         $bodyAsString = $response->getBodyAsString();
-        self::assertEquals(207, $response->status, 'Incorrect status code. Full response body:'.$bodyAsString);
+        self::assertEquals(207, $response->getStatus(), 'Incorrect status code. Full response body:'.$bodyAsString);
 
         // using the client for parsing
         $client = new DAV\Client(['baseUri' => '/']);
