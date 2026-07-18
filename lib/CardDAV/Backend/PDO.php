@@ -88,12 +88,15 @@ SQL
         );
         $stmt->execute([$principalUri, $principalUri]);
 
-        // Keyed by addressbookid so a direct share wins over a group share.
+        // Keyed by addressbookid. Prefer the direct user instance for path/ACL
+        // principaluri, but OR permissions across user + group shares.
         $addressBooksById = [];
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
             $addressBookId = (int) $row['addressbookid'];
-            if (isset($addressBooksById[$addressBookId]) && $row['principaluri'] !== $principalUri) {
-                continue;
+            $access = (int) $row['access'];
+            $permissions = (int) ($row['permissions'] ?? 0);
+            if (\Sabre\DAV\Sharing\Plugin::ACCESS_READWRITE === $access && 0 === $permissions) {
+                $permissions = 1 | 2 | 4;
             }
 
             $addressBook = [
@@ -107,16 +110,33 @@ SQL
                 'share-resource-uri' => '/ns/share/'.$row['addressbookid'],
             ];
 
-            $addressBook['share-access'] = (int) $row['access'];
-            $addressBook['permissions'] = (int) ($row['permissions'] ?? 0);
+            $addressBook['share-access'] = $access;
+            $addressBook['permissions'] = $permissions;
             // 1 = owner, 2 = readonly, 3 = readwrite
             if ($row['access'] > 1) {
                 // read-only is for backwards compatibility. Might go away in
                 // the future.
-                $addressBook['read-only'] = \Sabre\DAV\Sharing\Plugin::ACCESS_READ === (int) $row['access'];
+                $addressBook['read-only'] = 0 === $permissions;
             }
 
-            $addressBooksById[$addressBookId] = $addressBook;
+            if (!isset($addressBooksById[$addressBookId])) {
+                $addressBooksById[$addressBookId] = $addressBook;
+                continue;
+            }
+
+            $existing = $addressBooksById[$addressBookId];
+            $mergedPerms = ((int) $existing['permissions']) | $permissions;
+            if ($row['principaluri'] === $principalUri) {
+                $addressBooksById[$addressBookId] = $addressBook;
+            }
+            $addressBooksById[$addressBookId]['permissions'] = $mergedPerms;
+            if ($mergedPerms > 0) {
+                $addressBooksById[$addressBookId]['share-access'] = \Sabre\DAV\Sharing\Plugin::ACCESS_READWRITE;
+                $addressBooksById[$addressBookId]['read-only'] = false;
+            } else {
+                $addressBooksById[$addressBookId]['share-access'] = \Sabre\DAV\Sharing\Plugin::ACCESS_READ;
+                $addressBooksById[$addressBookId]['read-only'] = true;
+            }
         }
 
         return array_values($addressBooksById);

@@ -184,12 +184,17 @@ SQL
         );
         $stmt->execute([$principalUri, $principalUri]);
 
-        // Keyed by calendarid so a direct share wins over a group share.
+        // Keyed by calendarid. Prefer the direct user instance for path/ACL
+        // principaluri, but OR permissions across user + group shares so the
+        // effective access is the union (not "user-only").
         $calendarsById = [];
         while ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
             $calendarId = (int) $row['calendarid'];
-            if (isset($calendarsById[$calendarId]) && $row['principaluri'] !== $principalUri) {
-                continue;
+            $access = (int) $row['access'];
+            $permissions = (int) ($row['permissions'] ?? 0);
+            // Legacy ACCESS_READWRITE with no bitmask → full write/create/delete
+            if (DAV\Sharing\Plugin::ACCESS_READWRITE === $access && 0 === $permissions) {
+                $permissions = 1 | 2 | 4;
             }
 
             $components = [];
@@ -208,8 +213,8 @@ SQL
                 'share-resource-uri' => '/ns/share/'.$row['calendarid'],
             ];
 
-            $calendar['share-access'] = (int) $row['access'];
-            $calendar['permissions'] = (int) ($row['permissions'] ?? 0);
+            $calendar['share-access'] = $access;
+            $calendar['permissions'] = $permissions;
             // 1 = owner, 2 = readonly, 3 = readwrite
             if ($row['access'] > 1) {
                 // We need to find more information about the original owner.
@@ -218,14 +223,32 @@ SQL
 
                 // read-only is for backwards compatibility. Might go away in
                 // the future.
-                $calendar['read-only'] = DAV\Sharing\Plugin::ACCESS_READ === (int) $row['access'];
+                $calendar['read-only'] = 0 === $permissions;
             }
 
             foreach ($this->propertyMap as $xmlName => $dbName) {
                 $calendar[$xmlName] = $row[$dbName];
             }
 
-            $calendarsById[$calendarId] = $calendar;
+            if (!isset($calendarsById[$calendarId])) {
+                $calendarsById[$calendarId] = $calendar;
+                continue;
+            }
+
+            $existing = $calendarsById[$calendarId];
+            $mergedPerms = ((int) $existing['permissions']) | $permissions;
+            // Prefer the row that belongs to the requesting principal (stable path under their home)
+            if ($row['principaluri'] === $principalUri) {
+                $calendarsById[$calendarId] = $calendar;
+            }
+            $calendarsById[$calendarId]['permissions'] = $mergedPerms;
+            if ($mergedPerms > 0) {
+                $calendarsById[$calendarId]['share-access'] = DAV\Sharing\Plugin::ACCESS_READWRITE;
+                $calendarsById[$calendarId]['read-only'] = false;
+            } else {
+                $calendarsById[$calendarId]['share-access'] = DAV\Sharing\Plugin::ACCESS_READ;
+                $calendarsById[$calendarId]['read-only'] = true;
+            }
         }
 
         return array_values($calendarsById);
