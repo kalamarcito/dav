@@ -149,10 +149,21 @@ class SharedCalendar extends Calendar implements ISharedCalendar
                 break;
         }
 
-        // Read + write-properties always granted for shared resources
+        // Read always for any non-revoked share. write-properties only when the
+        // sharee has some write capability — granting it on pure readonly shares
+        // confuses clients (e.g. Thunderbird) into treating the calendar as editable.
         if (SPlugin::ACCESS_NOACCESS !== $access) {
-            $acl[] = ['privilege' => '{DAV:}write-properties', 'principal' => $principal, 'protected' => true];
-            $acl[] = ['privilege' => '{DAV:}write-properties', 'principal' => $proxyWrite, 'protected' => true];
+            $permissions = $this->calendarInfo['permissions'] ?? 0;
+            if (SPlugin::ACCESS_READWRITE === $access && 0 === $permissions) {
+                $permissions = self::PERM_WRITE | self::PERM_CREATE | self::PERM_DELETE;
+            }
+            $canChangeProps = $permissions > 0
+                || in_array($access, [SPlugin::ACCESS_SHAREDOWNER, SPlugin::ACCESS_NOTSHARED], true);
+
+            if ($canChangeProps) {
+                $acl[] = ['privilege' => '{DAV:}write-properties', 'principal' => $principal, 'protected' => true];
+                $acl[] = ['privilege' => '{DAV:}write-properties', 'principal' => $proxyWrite, 'protected' => true];
+            }
             $acl[] = ['privilege' => '{DAV:}read', 'principal' => $principal, 'protected' => true];
             $acl[] = ['privilege' => '{DAV:}read', 'principal' => $proxyRead, 'protected' => true];
             $acl[] = ['privilege' => '{DAV:}read', 'principal' => $proxyWrite, 'protected' => true];

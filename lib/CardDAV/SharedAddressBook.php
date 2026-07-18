@@ -151,13 +151,24 @@ class SharedAddressBook extends AddressBook implements ISharedAddressBook
                 break;
         }
 
-        // Read + write-properties always granted for shared resources
+        // Read always. write-properties only if the sharee can modify content
+        // (pure readonly shares must not advertise any write-* privilege or
+        // some clients enable edit/delete UI incorrectly).
         if (SPlugin::ACCESS_NOACCESS !== $access) {
-            $acl[] = [
-                'privilege' => '{DAV:}write-properties',
-                'principal' => $principal,
-                'protected' => true,
-            ];
+            $permissions = $this->addressBookInfo['permissions'] ?? 0;
+            if (SPlugin::ACCESS_READWRITE === $access && 0 === $permissions) {
+                $permissions = self::PERM_WRITE | self::PERM_CREATE | self::PERM_DELETE;
+            }
+            $canChangeProps = $permissions > 0
+                || in_array($access, [SPlugin::ACCESS_SHAREDOWNER, SPlugin::ACCESS_NOTSHARED], true);
+
+            if ($canChangeProps) {
+                $acl[] = [
+                    'privilege' => '{DAV:}write-properties',
+                    'principal' => $principal,
+                    'protected' => true,
+                ];
+            }
             $acl[] = [
                 'privilege' => '{DAV:}read',
                 'principal' => $principal,
