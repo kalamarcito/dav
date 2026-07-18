@@ -81,6 +81,7 @@ WHERE principaluri = ?
         INNER JOIN principals g ON g.id = gm.principal_id
         INNER JOIN principals m ON m.id = gm.member_id
         WHERE m.uri = ?
+          AND g.uri LIKE 'principals/group-%'
    )
 ORDER BY uri ASC
 SQL
